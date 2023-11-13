@@ -6,17 +6,11 @@ LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread
 COMMON_SRCS := ../common/ds_err.c
 COMMON_OBJS := $(subst .c,.o, $(COMMON_SRCS))
 
-EXEC := copy dup fcopy
+EXEC := ds_mount
 
 all: $(EXEC)
 	
-fcopy: fcopy.o $(COMMON_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-copy: copy.o $(COMMON_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-dup: dup.o $(COMMON_OBJS)
+ds_mount: ds_mount.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 testso: test.o
