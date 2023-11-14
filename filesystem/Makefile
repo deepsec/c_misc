@@ -6,11 +6,17 @@ LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread
 COMMON_SRCS := ../common/ds_err.c
 COMMON_OBJS := $(subst .c,.o, $(COMMON_SRCS))
 
-EXEC := ds_mount
+EXEC := ds_mount ds_umount statfs
 
 all: $(EXEC)
 	
 ds_mount: ds_mount.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+ds_umount: ds_umount.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+statfs: statfs.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 testso: test.o

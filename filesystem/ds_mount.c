@@ -38,18 +38,18 @@ int main(int argc, char *argv[])
                         case 'R': flags |= MS_REMOUNT;      break;
                         case 's': flags |= MS_SYNCHRONOUS;  break;
                         default:   
-                            ERR_QUIT("USAGE: %s [-o data] [-t type] [-f flags] source target", argv[0]);
+                            err_quit("USAGE: %s [-o data] [-t type] [-f flags] source target", argv[0]);
                     }
                 }
                 break;
             default:
-                ERR_QUIT("USAGE: %s [-o data] [-t type] [-f flags] source target", argv[0]);
+                err_quit("USAGE: %s [-o data] [-t type] [-f flags] source target", argv[0]);
 
         }
     }
 
     if (argc != optind + 2) {
-        ERR_QUIT("USAGE: %s [-o data] [-t type] [-f flags] source target", argv[0]);
+        err_quit("USAGE: %s [-o data] [-t type] [-f flags] source target", argv[0]);
     }
 
     if (mount(argv[optind], argv[optind+1], fstype, flags, data) == -1) {
