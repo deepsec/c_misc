@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     if (argc != 2) {
         err_quit("usage: %s pathname", argv[0]);
     }
+
     if (stat(argv[1], &st) < 0) {
         err_sys("stat error");
     }
