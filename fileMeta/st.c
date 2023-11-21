@@ -16,7 +16,13 @@ int main(int argc, char *argv[])
     }
 
     printf("dev: [%lu] = [%d:%d]\n", st.st_dev, major(st.st_dev), minor(st.st_dev));
+    printf("uid: %u, gid: %u\n", st.st_uid, st.st_gid);
+    printf("inode: %lu\n", st.st_ino);
+    printf("nlinks: %lu\n", st.st_nlink);
     printf("file size: %lu\n", st.st_size);
+    printf("file type: %s\n", S_ISREG(st.st_mode) ? "regular" : "not regular");
+    printf("file blocks: %d\n", st.st_blocks);
+    printf("file blocksize: %d\n", st.st_blksize);
 
     return 0;
 }

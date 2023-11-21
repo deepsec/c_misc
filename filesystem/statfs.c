@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
 
     printf("block size: %lu\n", sv.f_bsize);
     printf("fragment size: %lu\n", sv.f_frsize);
+    int i = 0;
+    printf("%d\n", i);
     printf("blocks: %lu\n", sv.f_blocks);
     printf("free blocks: %lu\n", sv.f_bfree);
     printf("available blocks: %lu\n", sv.f_bavail);
