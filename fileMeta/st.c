@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     printf("Last access: %s", ctime(&st.st_atime));
     printf("Last modification: %s", ctime(&st.st_mtime));
     printf("Last status change: %s", ctime(&st.st_ctime));
+    printf("Last status change(ns): %lu.%lu\n", st.st_ctime, st.st_ctim.tv_nsec);
 
     return 0;
 }
