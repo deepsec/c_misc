@@ -31,10 +31,10 @@ int main(int argc, char *argv[])
         memset(mem_ptr[i], 0, MEM_SIZE_1M);
         
         switch (i % 4) {
-            case 0: printf("-\r"); break;
-            case 1: printf("\\\r"); break;
-            case 2: printf("|\r"); break;
-            case 3: printf("/\r"); break;
+            case 0: printf(" -\r"); fflush(NULL); break;
+            case 1: printf(" \\\r"); fflush(NULL); break;
+            case 2: printf(" |\r"); fflush(NULL); break;
+            case 3: printf(" /\r"); fflush(NULL); break;
         }
     }
     printf("\nmalloced: %ldM\n", (i));
