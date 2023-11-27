@@ -96,7 +96,7 @@ void err_quit(const char *fmt, ...)
  * Error code passed as explict parameter.
  * Print a message and terminate.
  */
-void pth_err_exit(int error, const char *fmt, ...)
+void perr_exit(int error, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -110,7 +110,7 @@ void pth_err_exit(int error, const char *fmt, ...)
  * Nonfatal error unrelated to a system call.
  * Print a message and return.
  */
-void pth_err_msg(const char *fmt, ...)
+void perr_msg(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -123,7 +123,7 @@ void pth_err_msg(const char *fmt, ...)
  * Fatal error unrelated to a system call.
  * Print a message and terminate.
  */
-void pth_err_quit(const char *fmt, ...)
+void perr_quit(const char *fmt, ...)
 {
 	va_list ap;
 
