@@ -6,7 +6,7 @@ LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread
 COMMON_SRCS := ../common/ds_err.c
 COMMON_OBJS := $(subst .c,.o, $(COMMON_SRCS))
 
-EXEC := ut  st bigmem
+EXEC := ut  st eatMem
 
 all: $(EXEC)
 	
@@ -22,7 +22,7 @@ st: st.o $(COMMON_OBJS)
 ut: ut.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-bigmem: bigmem.o $(COMMON_OBJS)
+eatMem: eatMem.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 testso: test.o
