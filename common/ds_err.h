@@ -19,13 +19,13 @@ void perr_quit(const char *fmt, ...);
 #define ERR_MSG(fmt, args...)		err_msg("*ERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
 #define ERR_QUIT(fmt, args...)		err_quit("*ERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
 
-#define PERR_EXIT(error, fmt, args...)	perr_exit(error, "*ERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
-#define PERR_MSG(fmt, args...)		perr_msg("*ERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
-#define PERR_QUIT(fmt, args...)		perr_quit("*ERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
+#define PERR_EXIT(error, fmt, args...)	perr_exit(error, "*PERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
+#define PERR_MSG(fmt, args...)		perr_msg("*PERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
+#define PERR_QUIT(fmt, args...)		perr_quit("*PERR* %s[%d]: " fmt, __FILE__, __LINE__, ## args)
 
 #ifdef __DS_DBG__
-#define DS_DBG(fmt, args...)		perr_msg("*DBG* %s[%d] -> " fmt, __FILE__, __LINE__, ## args)
-#define DS_PDBG(fmt, args...)		perr_msg("*PTH_DBG* %s[%d] -> " fmt, __FILE__, __LINE__, ## args)
+#define DS_DBG(fmt, args...)		err_msg("*DS_DBG* %s[%d] -> " fmt, __FILE__, __LINE__, ## args)
+#define DS_PDBG(fmt, args...)		perr_msg("*DS_PDBG* %s[%d] -> " fmt, __FILE__, __LINE__, ## args)
 #else
 #define DS_DBG(fmt, args...)
 #define DS_PDBG(fmt, args...)
