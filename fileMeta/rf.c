@@ -46,27 +46,34 @@ int main(int argc, char *argv[])
 
 		snprintf(dir_l1, sizeof(dir_l1), "dir_level1_%ld", i);
 		if (chdir(dir_l1) < 0) {
-			err_sys("chdir(%s) error", dir_l1);
+			err_ret("chdir(%s) error, continue...", dir_l1);
+			continue;
 		}
 		for (j = 0; j < 4096; j++) {
 			char dir_l2[4096] = { 0 };
 
 			snprintf(dir_l2, sizeof(dir_l2), "dir_level2_%ld", j);
 			if (chdir(dir_l2) < 0) {
-				err_sys("chdir(%s) error", dir_l2);
+				err_ret("chdir(%s) error, continue...", dir_l2);
+				continue;
 			}
 			for (k = 0; k < count; k = k + 2) {
 				char file[4096] = { 0 };
 				snprintf(file, sizeof(file), "file_%ld", k);
-				unlink(file);
+				if (unlink(file) < 0) {
+					err_ret("unlink(%s) error, continue...", file);
+					continue;
+				}
 			}
 			if (chdir("..") < 0) {
-				err_sys("chdir(..) error");
+				err_ret("chdir(..) error, continue...");
+				continue;
 			}
 		}
 		show_status(j + 1);
 		if (chdir("..") < 0) {
-			err_sys("chdir(..) error");
+			err_ret("chdir(..) error, continue...");
+			continue;
 		}
 	}
 
