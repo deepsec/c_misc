@@ -58,9 +58,7 @@ int main(int argc, char *argv[])
 			for (k = 0; k < count; k = k + 2) {
 				char file[4096] = { 0 };
 				snprintf(file, sizeof(file), "file_%ld", k);
-				if (unlink(file) < 0) {
-					err_sys("unlink(%s) error", file);
-				}
+				unlink(file);
 			}
 			if (chdir("..") < 0) {
 				err_sys("chdir(..) error");
