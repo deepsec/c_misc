@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <dirent.h>
+#include <errno.h>
 #include <openssl/md5.h>
 #include <pthread.h>
 #include "ds_err.h"
@@ -47,11 +49,9 @@ void *md5(const char *str, int len, char *output)
     unsigned char digest[MD5_DIGEST_LENGTH] = {0};
 
     MD5((unsigned char *)str, len, (unsigned char *)digest);
-
     for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
         sprintf(output+2*i,"%02x", digest[i]);
-    }
-    
+    }    
     return output;
 }
 
@@ -93,6 +93,7 @@ void mkAllDir(char *dir)
 struct file_info {
 	char *tmp_dir;
 	char *dst_dir;
+	char *file_name;
 	char *buf;
 	unsigned long buf_len;
 };
@@ -105,9 +106,17 @@ void *create_file(void *arg)
 	char dst_file[PATH_MAX] = {0};
 	char tmp_file[PATH_MAX] = {0};
 
+	if (opendir(fi->tmp_dir) == NULL) {
+		mkAllDir(fi->tmp_dir);
+	}
+	if (opendir(fi->dst_dir) == NULL) {
+		mkAllDir(fi->dst_dir);
+	}
+
 	if (gettimeofday(&tv, NULL) < 0) {
 		err_sys("gettimeofday() error");
 	}
+	
 	snprintf(tmp_file, sizeof(tmp_file), "%s/%ld.%ld.data", fi->tmp_dir, tv->tv_sec, tv->tv_usec);
 	snprintf(dst_file, sizeof(dst_file), "%s/%ld.%ld.data", fi->dst_dir, tv->tv_sec, tv->tv_usec);
 	if ((fd = open(tmp_file, O_RDWR | O_CREAT, 0600)) < 0) {
@@ -123,7 +132,7 @@ void *create_file(void *arg)
 
 int main(int argc, char *argv[])
 {
-	unsigned long file_number, file_size;
+	unsigned long file_number, file_size, partitions_number;
 	unsigned long i, j, k;
 	char *buf, *ptr;
 	unsigned long buf_len;
@@ -131,10 +140,11 @@ int main(int argc, char *argv[])
 	char content[16] = "123456789abcdef";
 	unsigned int content_len = sizeof(content), bs = 0;
 	int	opt;
-	char *tmp_dir = TMP_DIR;
+	char *tmp_dir = TMPFILE_DIR;
 
 	file_number = DEFAULT_FILE_NUMBER;
 	file_size = DEFAULT_FILE_NUMBER;
+	partitions_number = DEFAULT_PARTITION_NUMBER;
 	while ((opt = getopt(argc, argv, "d:s:n:p:")) != -1) {
 		switch (opt) {
 		case 'd':
