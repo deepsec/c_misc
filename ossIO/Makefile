@@ -1,19 +1,22 @@
 CC := gcc
 CFLAGS := -Wall -g -D__DS_DBG__ -D_FILE_OFFSET_BITS=64
 INCLUDE := -I. -I../common
-LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread
+LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread -lcrypto -lssl
 
-COMMON_SRCS := ../common/ds_err.c
+COMMON_SRCS := ../common/ds_err.c ../common/ds_common.c
 COMMON_OBJS := $(subst .c,.o, $(COMMON_SRCS))
 
-EXEC := ossIOWrite
+EXEC := ossIO
 
 all: $(EXEC)
 	
 ds_mount: ds_mount.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-ossIOWrite: ossIOWrite.o $(COMMON_OBJS)
+ossIO: ossIO.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+t: t.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 testso: test.o
@@ -33,3 +36,4 @@ clean:
 
 ## file dependency
 ../common/ds_err.o: ../common/ds_err.c ../common/ds_err.h
+../common/ds_common.o: ../common/ds_common.c ../common/ds_common.h

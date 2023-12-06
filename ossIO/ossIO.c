@@ -91,8 +91,6 @@ char *gen_4k_buffer()
 }
 
 
-
-
 int create_one_file(struct file_info *finfo)
 {
 	struct file_info *fi = finfo;
@@ -102,12 +100,17 @@ int create_one_file(struct file_info *finfo)
 	unsigned long total_size = fi->file_size;
 	int i, n, blocks, left;
 	mode_t mode = fi->dir_mode;
+	DIR	*dirp;
 
-	if (opendir(fi->tmp_dir) == NULL) {
+	if ((dirp = opendir(fi->tmp_dir)) == NULL) {
 		mkalldir(fi->tmp_dir, mode);
+	} else {
+		closedir(dirp);
 	}
-	if (opendir(fi->dst_dir) == NULL) {
+	if ((dirp = opendir(fi->dst_dir)) == NULL) {
 		mkalldir(fi->dst_dir, mode);
+	} else {
+		closedir(dirp);
 	}
 	snprintf(tmp_file, sizeof(tmp_file), "%s/%s", fi->tmp_dir, fi->file_name);
 	snprintf(dst_file, sizeof(dst_file), "%s/%s", fi->dst_dir, fi->file_name);
