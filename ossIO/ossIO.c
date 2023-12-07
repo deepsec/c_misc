@@ -168,7 +168,7 @@ void *do_create_many_files(void *arg)
 				if (gettimeofday(&tv, NULL) < 0) {
 					err_sys("gettimeofday() error");
 				}	
-				snprintf(file_name, sizeof(file_name), "%ld.%ld.data", tv.tv_sec, tv.tv_usec);
+				snprintf(file_name, sizeof(file_name), "%ld.%ld.%ld.data", pbip->tindex, tv.tv_sec, tv.tv_usec);
 				md5(file_name, strlen(file_name), md5hash_name);
 				strncpy(suffix_name, &(md5hash_name[29]), 3);
 				snprintf(dst_dir, sizeof(dst_dir), "%s/%d/%s/%s", OBJECTS_DIR, i, suffix_name, md5hash_name);
@@ -179,6 +179,7 @@ void *do_create_many_files(void *arg)
 				finfo.buf = pbip->buf;
 				finfo.buf_len = pbip->buf_len;
 				finfo.dir_mode = 0755;
+				finfo.tindex = pbip->tindex;
 
 				create_one_file(&finfo);
 			}

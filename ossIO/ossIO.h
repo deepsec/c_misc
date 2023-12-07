@@ -2,6 +2,7 @@
 #define __OSSIO_H__
 
 struct file_info {
+	long tindex;
 	char *tmp_dir;
 	char *dst_dir;
 	mode_t	dir_mode;
