@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS := -Wall -g -D__DS_DBG__ -D_FILE_OFFSET_BITS=64
 INCLUDE := -I. -I../common
-LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread -lcrypto -lssl
+LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread
 
 COMMON_SRCS := ../common/ds_err.c ../common/ds_common.c
 COMMON_OBJS := $(subst .c,.o, $(COMMON_SRCS))
@@ -14,7 +14,7 @@ ds_mount: ds_mount.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 ossIO: ossIO.o $(COMMON_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS) -lcrypto -lssl
 
 t: t.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
