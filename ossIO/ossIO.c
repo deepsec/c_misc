@@ -188,16 +188,17 @@ void *do_create_many_files(void *arg)
 }
 
 
-void random_remove_files(const char *dir, long count)
+void random_remove_files(const char *dir, long count, int depth)
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat stbuf;
 	char tmp[PATH_MAX] = {0};
-	
+		
 	if (dir == NULL || count <= 0) return;
 	if ((dirp = opendir(dir)) == NULL) {
-		err_sys("opendir(%s) error", dir);
+		//err_msg("opendir(%s) error", dir);
+		return;
 	}
 	while (((dp = readdir(dirp)) != NULL) && count > 0) {
 		if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
@@ -209,14 +210,16 @@ void random_remove_files(const char *dir, long count)
 			continue;
 		}
 		if (S_ISDIR(stbuf.st_mode)) {
-			random_remove_files(tmp, count);
-			rmdir(tmp);
+			random_remove_files(tmp, count, depth+1);
+			if (depth == 1) {
+				rmdir(tmp);
+			}
 			continue;
 		}	
 		if (S_ISREG(stbuf.st_mode)) {
 			if (random() % 2 == 0) {
 				if (unlink(tmp) < 0) {
-					err_msg("unlink(%s) error", tmp);
+					//err_msg("unlink(%s) error", tmp);
 					continue;
 				}
 				else {
@@ -245,7 +248,7 @@ void *do_del_files(void *arg)
 	for (i = dir_level_1_low; i < dir_level_1_high; i++) {
 		for (j = 0; j < 4096; j++) {
 			snprintf(dst_dir, sizeof(dst_dir), "%s/%d", OBJECTS_DIR, i);
-			random_remove_files(dst_dir, pbip->file_count/2);
+			random_remove_files(dst_dir, pbip->file_count/2, 0);
 		}
 	}
 	return 0;
