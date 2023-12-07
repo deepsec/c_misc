@@ -13,11 +13,12 @@ struct file_info {
 
 
 struct partitions_buf_info {
+	long tindex;
 	char *buf;
-	int buf_len;
-	int partition_low;
-	int partition_high;
-	int file_count;
+	long buf_len;
+	long partition_low;
+	long partition_high;
+	long file_count;
 };
 
 

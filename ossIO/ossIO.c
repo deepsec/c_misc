@@ -17,11 +17,11 @@
 
 #define TMPFILE_DIR	"tmp"
 #define OBJECTS_DIR	"objects"
-#define DEFAULT_PARTITION_NUMBER	1024
-#define DEFAULT_FILE_NUMBER		1
-#define MAX_FILE_NUMBER			(16 * 1024)
-#define DEFAULT_PTHREAD_NUMBER	2
-#define MAX_PHTREAD_NUMBER		1024
+#define DEFAULT_PARTITION_NUM	1024
+#define DEFAULT_FILE_NUM		1
+#define MAX_FILE_NUM			(16 * 1024)
+#define DEFAULT_PTHREAD_NUM	2
+#define MAX_PTHREAD_NUM		1024
 
 void show_status(int num)
 {
@@ -41,9 +41,9 @@ void show_status(int num)
 void USAGE(const char *cmd)
 {
      printf("USAGE: %s [-n file_number] [-p partition_number] [-t pthread_number] directory \n", cmd);
-	 printf("      1. file_number is the number of files per directory,[%d~%d], default:[%d]\n", DEFAULT_FILE_NUMBER, MAX_FILE_NUMBER, DEFAULT_FILE_NUMBER);
-	 printf("      2. partition_number is the FIRST LEVEL directorys, default %d\n", DEFAULT_PARTITION_NUMBER);
-	 printf("      3. pthread_number is the pthread number, [%d~%d], default:[%d]\n", DEFAULT_PTHREAD_NUMBER, MAX_PHTREAD_NUMBER, DEFAULT_PTHREAD_NUMBER);
+	 printf("      1. file_number is the number of files per directory,[%d~%d], default:[%d]\n", DEFAULT_FILE_NUM, MAX_FILE_NUM, DEFAULT_FILE_NUM);
+	 printf("      2. partition_number is the FIRST LEVEL directorys, default %d\n", DEFAULT_PARTITION_NUM);
+	 printf("      3. pthread_number is the pthread number, [%d~%d], default:[%d]\n", DEFAULT_PTHREAD_NUM, MAX_PTHREAD_NUM, DEFAULT_PTHREAD_NUM);
 	 exit(1);
 }
 
@@ -59,15 +59,15 @@ void *md5(const char *str, int len, char *output)
     return output;
 }
 
-int gen_random_size(int min, int max)
+long gen_random_size(long min, long max)
 {
-	int size;
+	long size;
 
 	size = random() % max;
 	if (size < min) {
 		size = min;
 	}
-	return (size * 1024);
+	return (size);
 }
 
 char *gen_4k_buffer()
@@ -90,6 +90,18 @@ char *gen_4k_buffer()
 	return common_buf;
 }
 
+void dump_info(struct partitions_buf_info *pbi)
+{
+	if (pbi == NULL) return;
+	printf("***************************************************\n");
+	printf("pbi->tindex: %ld\n", pbi->tindex);
+	printf("pbi->buf: %p\n", pbi->buf);
+	printf("pbi->buf_len: %ld\n", pbi->buf_len);
+	printf("pbi->partition_low: %ld\n", pbi->partition_low);
+	printf("pbi->partition_high: %ld\n", pbi->partition_high);
+	printf("pbi->file_count: %ld\n", pbi->file_count);
+	printf("***************************************************\n");
+}
 
 int create_one_file(struct file_info *finfo)
 {
@@ -150,6 +162,7 @@ void *create_many_files(void *arg)
 	int i, j, k;
 	char md5hash_name[33] = {0}, suffix_name[4] = {0};
 
+	//dump_info(pbip);
 	dir_level_1_low = pbip->partition_low;
 	dir_level_1_high = pbip->partition_high;
 	
@@ -166,7 +179,7 @@ void *create_many_files(void *arg)
 				finfo.tmp_dir = TMPFILE_DIR;
 				finfo.dst_dir = dst_dir;
 				finfo.file_name = file_name;
-				finfo.file_size = gen_random_size(10, 128);
+				finfo.file_size = gen_random_size(10*1024, 400*1024);
 				finfo.buf = pbip->buf;
 				finfo.buf_len = pbip->buf_len;
 				finfo.dir_mode = 0755;
@@ -181,15 +194,16 @@ void *create_many_files(void *arg)
 
 int main(int argc, char *argv[])
 {
-	unsigned long partitions_number, file_number, pthread_number, p_step;
-	unsigned long i;	
+	long partitions_number, file_number, pthread_number, p_step;
+	long i;	
 	int	opt;
-	pthread_t tid[MAX_PHTREAD_NUMBER] = {0};
+	pthread_t	tid[MAX_PTHREAD_NUM] = {0};
+	struct partitions_buf_info  pbi_array[MAX_PTHREAD_NUM], *pbi;
 	char *databuf_4k = NULL;
 	
-	file_number = DEFAULT_FILE_NUMBER;
-	partitions_number = DEFAULT_PARTITION_NUMBER;
-	pthread_number = DEFAULT_PTHREAD_NUMBER;
+	file_number = DEFAULT_FILE_NUM;
+	partitions_number = DEFAULT_PARTITION_NUM;
+	pthread_number = DEFAULT_PTHREAD_NUM;
 	while ((opt = getopt(argc, argv, "n:p:t:")) != -1) {
 		switch (opt) {
 		case 'n':
@@ -210,28 +224,28 @@ int main(int argc, char *argv[])
 		USAGE(argv[0]);
 	}
 	mkalldir(argv[optind], 0755); chdir(argv[optind]);
-	if (pthread_number >  MAX_PHTREAD_NUMBER) {
-		pthread_number = MAX_PHTREAD_NUMBER;
+	if (pthread_number >  MAX_PTHREAD_NUM) {
+		pthread_number = MAX_PTHREAD_NUM;
 	}
 
 	if (partitions_number < pthread_number) {
 		partitions_number = pthread_number;
 	}
 	p_step = partitions_number / pthread_number;	
-	printf("file_number: %ld, partitions_number: %ld, pthread: %ld\n", file_number, partitions_number, pthread_number);	
+	printf("file_number: %ld, partitions_number: %ld, pthread_number: %ld\n", file_number, partitions_number, pthread_number);	
 	//exit(0);
+	pbi = pbi_array;
 	databuf_4k = gen_4k_buffer();	
-	for (i = 0; i < pthread_number; i++) {
-		struct partitions_buf_info pbi = {0};
-		pbi.buf = databuf_4k;
-		pbi.buf_len = 4096;
-		pbi.partition_low = i * p_step;
-		pbi.partition_high = pbi.partition_low  + p_step;
-		pbi.file_count = file_number;
-		if (pthread_create(&tid[i], NULL, create_many_files, &pbi) != 0) {
+	for (i = 0; i < pthread_number; i++, pbi++) {		
+		pbi->tindex = i;
+		pbi->buf = databuf_4k;
+		pbi->buf_len = 4096;
+		pbi->partition_low = i * p_step;
+		pbi->partition_high = pbi->partition_low  + p_step;
+		pbi->file_count = file_number;
+		if (pthread_create(&tid[i], NULL, create_many_files, pbi) != 0) {
 			perr_exit(errno, "pthread_create() error");
-		};
-
+		}
 	}
 	for (i = 0; i < pthread_number; i++) {		
 		pthread_join(tid[i], NULL);
