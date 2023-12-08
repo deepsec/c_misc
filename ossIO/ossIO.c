@@ -11,6 +11,7 @@
 #include <openssl/md5.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <sys/xattr.h>
 #include "ds_err.h"
 #include "ds_common.h"
 #include "ossIO.h"
@@ -104,7 +105,8 @@ int create_one_file(struct file_info *finfo)
 	int fd;
 	char dst_file[PATH_MAX] = {0};
 	char tmp_file[PATH_MAX] = {0};
-	unsigned long total_size = fi->file_size;
+	char xattr[4096] = {0};
+	unsigned long total_size = fi->file_size, xattr_len;
 	int i, n, blocks, left;
 	mode_t mode = fi->dir_mode;
 	DIR	*dirp;
@@ -137,6 +139,13 @@ int create_one_file(struct file_info *finfo)
 	if ((n = writen(fd, fi->buf, left)) < 0) {
 		err_sys("writen() error, return value[%d]", n);
 	}
+	// set xattr
+	xattr_len = snprintf(xattr, sizeof(xattr), "user.oss.meta:content-length=%ld", total_size);
+	xattr_len += snprintf(xattr + xattr_len, sizeof(xattr) - xattr_len, ",user.oss.meta:etag=%s", fi->file_name);
+	if (setxattr(tmp_file, "user.oss.meta", xattr, xattr_len, 0) < 0) {
+		err_sys("setxattr(%s) error", tmp_file);
+	}
+
 	fsync(fd);
 	close(fd);
 	if (rename(tmp_file, dst_file) < 0) {
@@ -197,7 +206,7 @@ void *do_create_many_files(void *arg)
 				if (gettimeofday(&tv, NULL) < 0) {
 					err_sys("gettimeofday() error");
 				}	
-				snprintf(file_name, sizeof(file_name), "%ld.%ld.%ld.data", pbip->tindex, tv.tv_sec, tv.tv_usec);
+				snprintf(file_name, sizeof(file_name), "%ld.%ld.%ld.%ld.data", pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
 				md5(file_name, strlen(file_name), md5hash_name);
 				strncpy(suffix_name, &(md5hash_name[29]), 3);
 				snprintf(dst_dir, sizeof(dst_dir), "%s/%d/%s/%s", OBJECTS_DIR, i, suffix_name, md5hash_name);

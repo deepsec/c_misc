@@ -20,16 +20,23 @@ struct partitions_buf_info {
 	long partition_low;
 	long partition_high;
 	long file_count;
+	long file_size_low;
+	long file_size_high;
+	long file_size_fixed;
+	long file_size_step;
+	long file_total_sum;
 };
 
 
 #define TMPFILE_DIR					"tmp"
 #define OBJECTS_DIR					"objects"
-#define DEFAULT_PARTITION_NUM		1024
+#define DEFAULT_PARTITION_NUM		128
 #define DEFAULT_FILE_NUM			2
-#define MAX_FILE_NUM				(16 * 1024)
+#define MAX_FILE_NUM				1024
+#define DEFAULT_FILE_SIZE_HIGH		512
+#define DEFAULT_FILE_SIZE_LOW		8
 #define DEFAULT_ADD_PTHREAD_NUM		2
 #define DEFAULT_DEL_PTHREAD_NUM		0
-#define MAX_PTHREAD_NUM				8192
+#define MAX_PTHREAD_NUM				1024
 
 #endif
