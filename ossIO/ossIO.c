@@ -34,7 +34,7 @@ void show_status(int num)
 
 void USAGE(const char *cmd)
 {
-     err_quit("USAGE: %s [-n file_num] [-p partition_number] [-a add_pthread_num] [-d del_pthread_num] directory", cmd);
+     err_quit("USAGE: %s [-D] [-n file_num] [-p partition_number] [-a add_pthread_num] [-d del_pthread_num] directory", cmd);
 }
 
 
@@ -143,6 +143,35 @@ int create_one_file(struct file_info *finfo)
 		err_sys("rename(%s, %s) error", tmp_file, dst_file);
 	};
 
+	return 0;
+}
+
+
+void *do_create_dirs_only(void *arg)
+{
+	struct partitions_buf_info *pbip = (struct partitions_buf_info *) arg;
+	char dst_dir[PATH_MAX] = {0};
+	int dir_level_1_low, dir_level_1_high;
+	int i, j;
+	
+	// detach, so needn't pthread_join
+	//pthread_detach(pthread_self());
+
+	dir_level_1_low = pbip->partition_low;
+	dir_level_1_high = pbip->partition_high;
+	
+	for (i = dir_level_1_low; i < dir_level_1_high; i++) {
+		for (j = 0; j < 4096; j++) {
+			if (j < 16) {
+				snprintf(dst_dir, sizeof(dst_dir), "%s/%d/00%x", OBJECTS_DIR, i, j);
+			} else if (j < 256) {
+				snprintf(dst_dir, sizeof(dst_dir), "%s/%d/0%x", OBJECTS_DIR, i, j);
+			} else {
+				snprintf(dst_dir, sizeof(dst_dir), "%s/%d/%x", OBJECTS_DIR, i, j);
+			}
+			mkalldir(dst_dir, 0755);
+		}
+	}
 	return 0;
 }
 
@@ -261,7 +290,7 @@ int main(int argc, char *argv[])
 {
 	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step;
 	long i;	
-	int	opt;
+	int	opt, dir_only = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0};
 	struct partitions_buf_info  pbi_array[MAX_PTHREAD_NUM], *pbi;
 	char *databuf_4k = NULL;
@@ -270,7 +299,7 @@ int main(int argc, char *argv[])
 	partition_num = DEFAULT_PARTITION_NUM;
 	add_pthread_num = DEFAULT_ADD_PTHREAD_NUM;
 	del_pthread_num = DEFAULT_DEL_PTHREAD_NUM;
-	while ((opt = getopt(argc, argv, "n:p:a:d:")) != -1) {
+	while ((opt = getopt(argc, argv, "Dn:p:a:d:")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
@@ -283,6 +312,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			del_pthread_num = strtoul(optarg, NULL, 10);
+			break;
+		case 'D':
+			dir_only = 1;
 			break;
 		default:
 			USAGE(argv[0]);
@@ -301,7 +333,8 @@ int main(int argc, char *argv[])
 		partition_num = add_pthread_num;
 	}
 	
-	printf("file_num: %ld, partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld\n", file_num, partition_num, add_pthread_num, del_pthread_num);	
+	printf("file_num: %ld, partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld, dir_only: %d\n", 
+				file_num, partition_num, add_pthread_num, del_pthread_num, dir_only);	
 	//exit(0);
 	pbi = pbi_array;
 	databuf_4k = gen_4k_buffer();
@@ -315,8 +348,15 @@ int main(int argc, char *argv[])
 		pbi->partition_low = i * a_step;
 		pbi->partition_high = pbi->partition_low  + a_step;
 		pbi->file_count = file_num;
-		if (pthread_create(&add_tid[i], NULL, do_create_many_files, pbi) != 0) {
-			perr_exit(errno, "pthread_create() error");
+		if (dir_only == 1) {
+			if (pthread_create(&add_tid[i], NULL, do_create_dirs_only, pbi) != 0) {
+				perr_exit(errno, "pthread_create() error");
+			}
+		}
+		else {
+			if (pthread_create(&add_tid[i], NULL, do_create_many_files, pbi) != 0) {
+				perr_exit(errno, "pthread_create() error");
+			}
 		}
 	}
 
