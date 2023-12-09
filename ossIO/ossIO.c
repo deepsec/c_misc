@@ -35,7 +35,14 @@ void show_status(int num)
 
 void USAGE(const char *cmd)
 {
-     err_quit("USAGE: %s [-D] [-n file_num] [-p partition_number] [-a add_pthread_num] [-d del_pthread_num] directory", cmd);
+     err_msg("USAGE: %s [-D] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num] directory", cmd);
+	 err_msg("       -D                       only create partitions and suffix directorys, no files create");
+	 err_msg("       -n file_num              files in a partition = (partiton_number * 4096 * file_num), [default: %d]", DEFAULT_FILE_NUM);
+	 err_msg("       -p partition_num         partitions (TOP DIR in 'objects'), [default: %d]", DEFAULT_PARTITION_NUM);
+	 err_msg("       -s min:max:step          file_size, KB, [default: %d:%d:%d] ", DEFAULT_FILE_SIZE_MIN, DEFAULT_FILE_SIZE_MAX, DEFAULT_FILE_SIZE_STEP);
+	 err_msg("       -a add_pthread_num       pthreads for create file [default: %d]", DEFAULT_ADD_PTHREAD_NUM);
+	 err_msg("       -d del_pthread_num       pthreads for delete file [default: %d]  ", DEFAULT_DEL_PTHREAD_NUM);
+	 err_quit("       directory                target directory name");
 }
 
 
@@ -61,6 +68,22 @@ long gen_random_size(long min, long max)
 		size = min;
 	}
 	return (size);
+}
+
+long decide_file_size(long tsum, long tindex, long file_size_min, long file_size_max, long file_size_step)
+{
+	long size = 0;
+
+	if (file_size_min == file_size_max) {
+		size = file_size_min;
+		return size;
+	}
+	if (file_size_step == 0) {
+		size = gen_random_size(file_size_min, file_size_max);
+		return size;
+	}
+	size = (file_size_min + tindex * file_size_step) % file_size_max;
+	return size;
 }
 
 
@@ -213,7 +236,7 @@ void *do_create_many_files(void *arg)
 				finfo.tmp_dir = TMPFILE_DIR;
 				finfo.dst_dir = dst_dir;
 				finfo.file_name = file_name;
-				finfo.file_size = gen_random_size(10*1024, 400*1024);
+				finfo.file_size = decide_file_size(pbip->tsum, pbip->tindex, pbip->file_size_min, pbip->file_size_max, pbip->file_size_step);
 				finfo.buf = pbip->buf;
 				finfo.buf_len = pbip->buf_len;
 				finfo.dir_mode = 0755;
@@ -293,28 +316,75 @@ void *do_del_files(void *arg)
 	return 0;
 }
 
+void parse_size_format(char *format, long *size_min, long *size_max, long *size_step)
+{
+	char *p, *p2, v[256] = {0};
+	int i, mark;
+
+	if (format == NULL || strlen(format) >= 255 || !size_min || !size_max || !size_step)
+		return;
+	//err_msg("format = %s", format);
+	p2 = format, p = format;
+	for (i = 0, mark = 0; i <= strlen(format); i++) {
+		if (p2[i] != ':' && p2[i] != '\0') {
+			continue;
+		}
+		mark++;
+		strncpy(v, p, &p2[i] - p);
+		p = &p2[i+1];
+		switch (mark) {
+		case 1:	
+			*size_min = strtoul(v, NULL, 10); 
+			break;
+		case 2: 
+			*size_max = strtoul(v, NULL, 10); 
+			break;
+		case 3: 
+			*size_step = strtoul(v, NULL, 10); 
+			break;
+		}
+		memset(v, 0, sizeof(v));
+	}
+	if (*size_max < *size_min || *size_step > (DEFAULT_FILE_SIZE_MAX - DEFAULT_FILE_SIZE_MIN) || *size_step > (*size_max-*size_min)) {
+		err_quit("size range error: min[%ld],max[%ld],step[%lu]", *size_min, *size_max, *size_step);
+	}
+	if (*size_min < DEFAULT_FILE_SIZE_MIN) {
+		*size_min = DEFAULT_FILE_SIZE_MIN;
+	}
+	if (*size_max > DEFAULT_FILE_SIZE_MAX) {
+		*size_max = DEFAULT_FILE_SIZE_MAX;
+	}
+	return;
+}
 
 
 int main(int argc, char *argv[])
 {
 	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step;
+	long file_size_min, file_size_max, file_size_step;
 	long i;	
 	int	opt, dir_only = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0};
-	struct partitions_buf_info  pbi_array[MAX_PTHREAD_NUM], *pbi;
+	struct partitions_buf_info  pbi_add_array[MAX_PTHREAD_NUM], pbi_del_array[MAX_PTHREAD_NUM], *pbi;
 	char *databuf_4k = NULL;
 	
 	file_num = DEFAULT_FILE_NUM;
 	partition_num = DEFAULT_PARTITION_NUM;
 	add_pthread_num = DEFAULT_ADD_PTHREAD_NUM;
 	del_pthread_num = DEFAULT_DEL_PTHREAD_NUM;
-	while ((opt = getopt(argc, argv, "Dn:p:a:d:")) != -1) {
+	file_size_min = DEFAULT_FILE_SIZE_MIN;
+	file_size_max = DEFAULT_FILE_SIZE_MAX;
+	file_size_step = DEFAULT_FILE_SIZE_STEP;
+	while ((opt = getopt(argc, argv, "n:p:s:a:d:D")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
 			break;
 		case 'p':
 			partition_num = strtoul(optarg, NULL, 10);
+			break;
+		case 's':
+			parse_size_format(optarg, &file_size_min, &file_size_max, &file_size_step);
 			break;
 		case 'a':
 			add_pthread_num = strtoul(optarg, NULL, 10);
@@ -342,21 +412,25 @@ int main(int argc, char *argv[])
 		partition_num = add_pthread_num;
 	}
 	
-	printf("file_num: %ld, partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld, dir_only: %d\n", 
-				file_num, partition_num, add_pthread_num, del_pthread_num, dir_only);	
+	printf("file_num: %ld, file_size[%ld:%ld:%ld] partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld, dir_only: %d\n", 
+				file_num, file_size_min, file_size_max, file_size_step, partition_num, add_pthread_num, del_pthread_num, dir_only);	
 	//exit(0);
-	pbi = pbi_array;
+	pbi = pbi_add_array;
 	databuf_4k = gen_4k_buffer();
 	if (add_pthread_num > 0) {
 		a_step = partition_num / add_pthread_num;
 	}
-	for (i = 0; i < add_pthread_num; i++, pbi++) {		
+	for (i = 0; i < add_pthread_num; i++, pbi++) {	
+		pbi->tsum = add_pthread_num;	
 		pbi->tindex = i;
 		pbi->buf = databuf_4k;
 		pbi->buf_len = 4096;
 		pbi->partition_low = i * a_step;
 		pbi->partition_high = pbi->partition_low  + a_step;
 		pbi->file_count = file_num;
+		pbi->file_size_min = file_size_min * 1024;  //from KB to bytes
+		pbi->file_size_max = file_size_max * 1024;
+		pbi->file_size_step = file_size_step * 1024;
 		if (dir_only == 1) {
 			if (pthread_create(&add_tid[i], NULL, do_create_dirs_only, pbi) != 0) {
 				perr_exit(errno, "pthread_create() error");
@@ -371,8 +445,10 @@ int main(int argc, char *argv[])
 
 	if (del_pthread_num > 0) {
 		d_step = partition_num / del_pthread_num;
-	}	
-	for (i = 0; i < del_pthread_num; i++) {		
+	}
+	pbi = pbi_del_array;	
+	for (i = 0; i < del_pthread_num; i++) {
+		pbi->tsum = del_pthread_num;	
 		pbi->tindex = i;
 		pbi->buf = NULL;
 		pbi->buf_len = 0;
