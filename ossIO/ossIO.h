@@ -28,6 +28,7 @@ struct partitions_buf_info {
 	long file_total_del;
 	long file_del_err_count;
 	int  have_version;
+	long tmp_dir_num;
 };
 
 
@@ -43,5 +44,6 @@ struct partitions_buf_info {
 #define DEFAULT_DEL_PTHREAD_NUM		0
 #define MAX_PTHREAD_NUM				128
 #define DEFAULT_DEL_INTERVAL		60
+#define DEFAULT_TMPDIR_NUM			1
 
 #endif

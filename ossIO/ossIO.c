@@ -35,7 +35,7 @@ void show_status(int num)
 
 void USAGE(const char *cmd)
 {
-     err_msg("USAGE: %s [-D] [-v] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num] [-i del_interval] directory", cmd);
+     err_msg("USAGE: %s [-D] [-v] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num] [-i del_interval] [-t tmp_dir_num] directory", cmd);
 	 err_msg("       -D                       only create partitions and suffix directorys, no files create");
 	 err_msg("       -v                       support version when delete object, [default: no support]");
 	 err_msg("       -n file_num              files in a partition = (partiton_number * 4096 * file_num), [default: %d]", DEFAULT_FILE_NUM);
@@ -44,6 +44,7 @@ void USAGE(const char *cmd)
 	 err_msg("       -a add_pthread_num       pthreads for create file [default: %d]", DEFAULT_ADD_PTHREAD_NUM);
 	 err_msg("       -d del_pthread_num       pthreads for delete file [default: %d]  ", DEFAULT_DEL_PTHREAD_NUM);
 	 err_msg("       -i interval              delete interval, [default: %d]", DEFAULT_DEL_INTERVAL);
+	 err_msg("       -t tmp_dir_num           tmp_dir_num, [default: %d]", DEFAULT_TMPDIR_NUM);
 	 err_quit("       directory                target directory name");
 }
 
@@ -219,12 +220,13 @@ void *do_create_many_files(void *arg)
 	struct partitions_buf_info *pbip = (struct partitions_buf_info *) arg;
 	struct file_info finfo = {0};	
 	char file_name[NAME_MAX] = {0};
+	char tmpfile_dir[NAME_MAX] = {0};
 	char dst_dir[PATH_MAX] = {0};
 	struct timeval	tv = {0};
 	int dir_level_1_low, dir_level_1_high;
 	int i, j, k;
 	char md5hash_name[33] = {0}, suffix_name[4] = {0};
-
+	
 	//dump_info(pbip);
 	dir_level_1_low = pbip->partition_low;
 	dir_level_1_high = pbip->partition_high;
@@ -239,7 +241,12 @@ void *do_create_many_files(void *arg)
 				md5(file_name, strlen(file_name), md5hash_name);
 				strncpy(suffix_name, &(md5hash_name[29]), 3);
 				snprintf(dst_dir, sizeof(dst_dir), "%s/%d/%s/%s", OBJECTS_DIR, i, suffix_name, md5hash_name);
-				finfo.tmp_dir = TMPFILE_DIR;
+				if (pbip->tmp_dir_num > 1) {
+					snprintf(tmpfile_dir, sizeof(tmpfile_dir), "%s%ld", TMPFILE_DIR,  j % pbip->tmp_dir_num);
+				} else {
+					snprintf(tmpfile_dir, sizeof(tmpfile_dir), "%s", TMPFILE_DIR);
+				};
+				finfo.tmp_dir = tmpfile_dir;
 				finfo.dst_dir = dst_dir;
 				finfo.file_name = file_name;
 				finfo.file_size = decide_file_size(pbip->tsum, pbip->tindex, pbip->file_size_min, pbip->file_size_max, pbip->file_size_step);
@@ -387,7 +394,7 @@ void parse_size_format(char *format, long *size_min, long *size_max, long *size_
 int main(int argc, char *argv[])
 {
 	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step, del_interval;
-	long file_size_min, file_size_max, file_size_step;
+	long file_size_min, file_size_max, file_size_step, tmp_dir_num;
 	long i;	
 	int	opt, dir_only = 0, have_version = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0};
@@ -402,7 +409,8 @@ int main(int argc, char *argv[])
 	file_size_max = DEFAULT_FILE_SIZE_MAX;
 	file_size_step = DEFAULT_FILE_SIZE_STEP;
 	del_interval = DEFAULT_DEL_INTERVAL;
-	while ((opt = getopt(argc, argv, "n:p:s:a:d:Dvi:")) != -1) {
+	tmp_dir_num = DEFAULT_TMPDIR_NUM;
+	while ((opt = getopt(argc, argv, "n:p:s:a:d:Dvi:t:")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
@@ -427,6 +435,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			del_interval = strtoul(optarg, NULL, 10);
+			break;
+		case 't':
+			tmp_dir_num = strtoul(optarg, NULL, 10);
 			break;
 		default:
 			USAGE(argv[0]);
@@ -464,6 +475,7 @@ int main(int argc, char *argv[])
 		pbi->file_size_min = file_size_min * 1024;  //from KB to bytes
 		pbi->file_size_max = file_size_max * 1024;
 		pbi->file_size_step = file_size_step * 1024;
+		pbi->tmp_dir_num = tmp_dir_num;
 		if (dir_only == 1) {
 			if (pthread_create(&add_tid[i], NULL, do_create_dirs_only, pbi) != 0) {
 				perr_exit(errno, "pthread_create() error");
