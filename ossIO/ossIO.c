@@ -298,7 +298,7 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 			continue;
 		}	
 		if (S_ISREG(stbuf.st_mode)) {
-			if (random() % 2 == 0) {
+			if (random() % 3 == 0) {
 				if (gettimeofday(&tv, NULL) < 0) {
 					err_sys("gettimeofday() error");
 				}	
@@ -316,10 +316,10 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 					}
 				} else {
 					if (unlink(tmp) < 0) {
-						err_msg("unlink(%s) error", tmp);
+						//err_ret("unlink(%s) error", tmp);
 						continue;
 					}
-					pbip->file_total_del--;
+					pbip->file_total_del++;
 				}
 				if (rename(ts_tmp, ts_dst_name) < 0) {
 					err_sys("rename(%s, %s) error", ts_tmp, ts_dst_name);
@@ -491,7 +491,10 @@ int main(int argc, char *argv[])
 	if (argc != (optind+1)) {
 		USAGE(argv[0]);
 	}
-	mkalldir(argv[optind], 0755); chdir(argv[optind]);
+	mkalldir(argv[optind], 0755); 
+	if (chdir(argv[optind]) < 0) {
+		err_sys("chdir error");
+	}
 	if (add_pthread_num >  MAX_PTHREAD_NUM) {
 		add_pthread_num = MAX_PTHREAD_NUM;
 	}

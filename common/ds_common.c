@@ -60,9 +60,12 @@ void mkalldir(char *dir, mode_t mode)
 	char all_dir[PATH_MAX] = {0};
 	int i;
 
-	if (dir == NULL || *dir == '/') return;
+	if (dir == NULL) return;
 
 	for (i = 0, p = dir; i <= strlen(dir); i++) {
+		if (i == 0 && *p == '/') {	/* skip root directory */
+			continue;
+		}
 		if (p[i] != '/' && p[i] != '\0') {
 			continue;
 		}
