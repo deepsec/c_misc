@@ -392,7 +392,7 @@ void parse_size_format(char *format, long *size_min, long *size_max, long *size_
 	return;
 }
 
-void output_statistic_info(struct statistic_info *si)
+void get_statistic_info(struct statistic_info *si)
 {
 	struct partitions_buf_info *pbi_add = si->pbi_add;
 	struct partitions_buf_info *pbi_del = si->pbi_del;
@@ -409,19 +409,27 @@ void output_statistic_info(struct statistic_info *si)
 		si->del_total_count += pbi_del[i].file_total_del;
 	}
 	si->curent_total_count = si->add_total_count - si->del_total_count;
-	err_msg("add_files: %ld, del_files: %ld, curent_files: %ld", si->add_total_count, si->del_total_count, si->curent_total_count);
-
 	return;
 }
 
 void *do_statistic(void *arg)
 {
 	struct statistic_info *si = (struct statistic_info *) arg;
-	
+	long current_add_count = 0, last_add_count = 0;
+	long current_del_count = 0, last_del_count = 0;
+
+	// detach, so needn't pthread_join
 	pthread_detach(pthread_self());
 	for (;;) {
+		last_add_count = current_add_count;
+		last_del_count = current_del_count;
 		sleep(1);
-		output_statistic_info(si);
+		get_statistic_info(si);
+		current_add_count = si->curent_total_count;
+		current_del_count = si->del_total_count;
+		err_msg("curent_add_files: %ld, current_del_files: %ld,  add_speed: %ld/s, del_speed: %ld/s", 
+				current_add_count, current_del_count, current_add_count - last_add_count, current_del_count - last_del_count);
+				
 	}
 	return 0;
 }
