@@ -26,11 +26,17 @@ struct partitions_buf_info {
 	long file_size_step;
 	long file_total_add;
 	long file_total_del;
-	long file_del_err_count;
 	int  have_version;
 	long tmp_dir_num;
 };
 
+struct statistic_info {
+	struct partitions_buf_info *pbi_add, *pbi_del;
+	int	   pbi_add_len, pbi_del_len;
+	long add_total_count;
+	long del_total_count;
+	long curent_total_count;
+};
 
 #define TMPFILE_DIR					"tmp"
 #define OBJECTS_DIR					"objects"

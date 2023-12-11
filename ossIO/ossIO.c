@@ -256,6 +256,7 @@ void *do_create_many_files(void *arg)
 				finfo.tindex = pbip->tindex;
 
 				create_one_file(&finfo);
+				pbip->file_total_add++;
 			}
 		}
 	}
@@ -318,6 +319,7 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 						err_msg("unlink(%s) error", tmp);
 						continue;
 					}
+					pbip->file_total_del--;
 				}
 				if (rename(ts_tmp, ts_dst_name) < 0) {
 					err_sys("rename(%s, %s) error", ts_tmp, ts_dst_name);
@@ -390,6 +392,39 @@ void parse_size_format(char *format, long *size_min, long *size_max, long *size_
 	return;
 }
 
+void output_statistic_info(struct statistic_info *si)
+{
+	struct partitions_buf_info *pbi_add = si->pbi_add;
+	struct partitions_buf_info *pbi_del = si->pbi_del;
+	int i;
+
+	si->add_total_count = 0;
+	si->del_total_count = 0;
+	si->curent_total_count = 0;
+
+	for (i = 0; i < si->pbi_add_len; i++) {
+		si->add_total_count += pbi_add[i].file_total_add;
+	}
+	for (i = 0; i < si->pbi_del_len; i++) {
+		si->del_total_count += pbi_del[i].file_total_del;
+	}
+	si->curent_total_count = si->add_total_count - si->del_total_count;
+	err_msg("add_files: %ld, del_files: %ld, curent_files: %ld", si->add_total_count, si->del_total_count, si->curent_total_count);
+
+	return;
+}
+
+void *do_statistic(void *arg)
+{
+	struct statistic_info *si = (struct statistic_info *) arg;
+	
+	pthread_detach(pthread_self());
+	for (;;) {
+		sleep(1);
+		output_statistic_info(si);
+	}
+	return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -397,8 +432,9 @@ int main(int argc, char *argv[])
 	long file_size_min, file_size_max, file_size_step, tmp_dir_num;
 	long i;	
 	int	opt, dir_only = 0, have_version = 0;
-	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0};
+	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0}, stat_tid;
 	struct partitions_buf_info  pbi_add_array[MAX_PTHREAD_NUM] = {{0},}, pbi_del_array[MAX_PTHREAD_NUM] = {{0},}, *pbi;
+	struct statistic_info si = {0};
 	char *databuf_4k = NULL;
 	
 	file_num = DEFAULT_FILE_NUM;
@@ -456,8 +492,10 @@ int main(int argc, char *argv[])
 		partition_num = add_pthread_num;
 	}
 	
-	printf("file_num: %ld, file_size[%ld:%ld:%ld] partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld, dir_only: %d\n", 
-				file_num, file_size_min, file_size_max, file_size_step, partition_num, add_pthread_num, del_pthread_num, dir_only);	
+	printf("file_num: %ld, file_size[%ld:%ld:%ld] partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld,"
+			"dir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld\n", 
+				file_num, file_size_min, file_size_max, file_size_step, partition_num, add_pthread_num, del_pthread_num,
+				dir_only, have_version, del_interval, tmp_dir_num);	
 	//exit(0);
 	pbi = pbi_add_array;
 	databuf_4k = gen_4k_buffer();
@@ -488,6 +526,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	si.pbi_add = pbi_add_array;
+	si.pbi_add_len = add_pthread_num;
+	si.pbi_del = pbi_del_array;
+	si.pbi_del_len = del_pthread_num;
+	if (pthread_create(&stat_tid, NULL, do_statistic, &si) != 0) {
+		perr_exit(errno, "pthread_create() error");
+	}
+
 	if (del_pthread_num > 0) {
 		d_step = partition_num / del_pthread_num;
 	}
@@ -506,7 +552,8 @@ int main(int argc, char *argv[])
 			perr_exit(errno, "pthread_create() error");
 		}
 	}
-
+	
+	
 	for (i = 0; i < add_pthread_num; i++) {		
 		pthread_join(add_tid[i], NULL);
 	}
