@@ -417,6 +417,10 @@ void *do_statistic(void *arg)
 	struct statistic_info *si = (struct statistic_info *) arg;
 	long current_add_count = 0, last_add_count = 0;
 	long current_del_count = 0, last_del_count = 0;
+	struct timeval	tv_start = {0}, tv_now = {0};
+	if (gettimeofday(&tv_start, NULL) < 0) {
+		err_sys("gettimeofday() error");
+	}
 
 	// detach, so needn't pthread_join
 	pthread_detach(pthread_self());
@@ -427,8 +431,11 @@ void *do_statistic(void *arg)
 		get_statistic_info(si);
 		current_add_count = si->curent_total_count;
 		current_del_count = si->del_total_count;
-		err_msg("curent_add_files: %ld, current_del_files: %ld,  add_speed: %ld/s, del_speed: %ld/s", 
-				current_add_count, current_del_count, current_add_count - last_add_count, current_del_count - last_del_count);
+		if (gettimeofday(&tv_now, NULL) < 0) {
+			err_sys("gettimeofday() error");
+		}
+		err_msg("curent_add_files: %ld, current_del_files: %ld, add_speed: %ld/s,  del_speed: %ld/s, time_elapsed: %ld s", 
+				current_add_count, current_del_count, current_add_count - last_add_count, current_del_count - last_del_count, tv_now.tv_sec - tv_start.tv_sec);
 				
 	}
 	return 0;
