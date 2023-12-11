@@ -35,13 +35,15 @@ void show_status(int num)
 
 void USAGE(const char *cmd)
 {
-     err_msg("USAGE: %s [-D] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num] directory", cmd);
+     err_msg("USAGE: %s [-D] [-v] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num] [-i del_interval] directory", cmd);
 	 err_msg("       -D                       only create partitions and suffix directorys, no files create");
+	 err_msg("       -v                       support version when delete object, [default: no support]");
 	 err_msg("       -n file_num              files in a partition = (partiton_number * 4096 * file_num), [default: %d]", DEFAULT_FILE_NUM);
 	 err_msg("       -p partition_num         partitions (TOP DIR in 'objects'), [default: %d]", DEFAULT_PARTITION_NUM);
 	 err_msg("       -s min:max:step          file_size, KB, [default: %d:%d:%d] ", DEFAULT_FILE_SIZE_MIN, DEFAULT_FILE_SIZE_MAX, DEFAULT_FILE_SIZE_STEP);
 	 err_msg("       -a add_pthread_num       pthreads for create file [default: %d]", DEFAULT_ADD_PTHREAD_NUM);
 	 err_msg("       -d del_pthread_num       pthreads for delete file [default: %d]  ", DEFAULT_DEL_PTHREAD_NUM);
+	 err_msg("       -i interval              delete interval, [default: %d]", DEFAULT_DEL_INTERVAL);
 	 err_quit("       directory                target directory name");
 }
 
@@ -139,11 +141,15 @@ int create_one_file(struct file_info *finfo)
 	} else {
 		closedir(dirp);
 	}
+/*
 	if ((dirp = opendir(fi->dst_dir)) == NULL) {
 		mkalldir(fi->dst_dir, mode);
 	} else {
 		closedir(dirp);
 	}
+*/
+	// because the dir always is not exists, so don't opendir and directly mkalldir
+	mkalldir(fi->dst_dir, mode);
 	snprintf(tmp_file, sizeof(tmp_file), "%s/%s", fi->tmp_dir, fi->file_name);
 	snprintf(dst_file, sizeof(dst_file), "%s/%s", fi->dst_dir, fi->file_name);
 	
@@ -250,19 +256,22 @@ void *do_create_many_files(void *arg)
 }
 
 
-void random_remove_files(const char *dir, long count, int depth)
+void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat stbuf;
-	char tmp[PATH_MAX] = {0};
+	struct timeval	tv = {0};
+	char tmp[PATH_MAX] = {0}, version_file[PATH_MAX] = {0};
+	char ts_name[NAME_MAX] = {0}, ts_tmp[PATH_MAX] = {0}, ts_dst_name[PATH_MAX] = {0};
+	int ts_fd;
 		
-	if (dir == NULL || count <= 0) return;
+	if (dir == NULL) return;
 	if ((dirp = opendir(dir)) == NULL) {
 		//err_msg("opendir(%s) error", dir);
 		return;
 	}
-	while (((dp = readdir(dirp)) != NULL) && count > 0) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
 			continue;
 		}
@@ -272,21 +281,40 @@ void random_remove_files(const char *dir, long count, int depth)
 			continue;
 		}
 		if (S_ISDIR(stbuf.st_mode)) {
-			random_remove_files(tmp, count, depth+1);
+			random_remove_files(pbip, tmp);
+			/*
 			if (depth == 1) {
 				rmdir(tmp);
 			}
+			*/
 			continue;
 		}	
 		if (S_ISREG(stbuf.st_mode)) {
 			if (random() % 2 == 0) {
-				if (unlink(tmp) < 0) {
-					//err_msg("unlink(%s) error", tmp);
-					continue;
+				if (gettimeofday(&tv, NULL) < 0) {
+					err_sys("gettimeofday() error");
+				}	
+				snprintf(ts_name, sizeof(ts_name), "%ld.%ld.%ld.%ld.ts", pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
+				snprintf(ts_tmp, sizeof(ts_tmp), "%s/%s", TMPFILE_DIR, ts_name);
+				snprintf(ts_dst_name, sizeof(ts_dst_name), "%s/%s", dir, ts_name);
+				if ((ts_fd = creat(ts_tmp, 0600)) < 0) {
+					err_sys("creat(%s) error", ts_tmp);
 				}
-				else {
-					count--;
+				close(ts_fd);
+				if (pbip->have_version) {
+					snprintf(version_file, sizeof(version_file), "%s/version.%s_%ld.%ld.%ld.%ld.data", dir, dp->d_name, pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
+					if (rename(tmp, version_file) < 0) {
+						err_sys("rename(%s, %s) error", tmp, version_file);
+					}
+				} else {
+					if (unlink(tmp) < 0) {
+						err_msg("unlink(%s) error", tmp);
+						continue;
+					}
 				}
+				if (rename(ts_tmp, ts_dst_name) < 0) {
+					err_sys("rename(%s, %s) error", ts_tmp, ts_dst_name);
+				}				
 			}
 		}
 	}
@@ -299,7 +327,7 @@ void *do_del_files(void *arg)
 	struct partitions_buf_info *pbip = (struct partitions_buf_info *) arg;
 	char dst_dir[PATH_MAX] = {0};
 	int dir_level_1_low, dir_level_1_high;
-	int i, j;
+	int i;
 	
 	// detach, so needn't pthread_join
 	//pthread_detach(pthread_self());
@@ -308,10 +336,8 @@ void *do_del_files(void *arg)
 	dir_level_1_high = pbip->partition_high;
 	
 	for (i = dir_level_1_low; i < dir_level_1_high; i++) {
-		for (j = 0; j < 4096; j++) {
-			snprintf(dst_dir, sizeof(dst_dir), "%s/%d", OBJECTS_DIR, i);
-			random_remove_files(dst_dir, pbip->file_count/2, 0);
-		}
+		snprintf(dst_dir, sizeof(dst_dir), "%s/%d", OBJECTS_DIR, i);
+		random_remove_files(pbip, dst_dir);
 	}
 	return 0;
 }
@@ -360,12 +386,12 @@ void parse_size_format(char *format, long *size_min, long *size_max, long *size_
 
 int main(int argc, char *argv[])
 {
-	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step;
+	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step, del_interval;
 	long file_size_min, file_size_max, file_size_step;
 	long i;	
-	int	opt, dir_only = 0;
+	int	opt, dir_only = 0, have_version = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0};
-	struct partitions_buf_info  pbi_add_array[MAX_PTHREAD_NUM], pbi_del_array[MAX_PTHREAD_NUM], *pbi;
+	struct partitions_buf_info  pbi_add_array[MAX_PTHREAD_NUM] = {{0},}, pbi_del_array[MAX_PTHREAD_NUM] = {{0},}, *pbi;
 	char *databuf_4k = NULL;
 	
 	file_num = DEFAULT_FILE_NUM;
@@ -375,7 +401,8 @@ int main(int argc, char *argv[])
 	file_size_min = DEFAULT_FILE_SIZE_MIN;
 	file_size_max = DEFAULT_FILE_SIZE_MAX;
 	file_size_step = DEFAULT_FILE_SIZE_STEP;
-	while ((opt = getopt(argc, argv, "n:p:s:a:d:D")) != -1) {
+	del_interval = DEFAULT_DEL_INTERVAL;
+	while ((opt = getopt(argc, argv, "n:p:s:a:d:Dvi:")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
@@ -394,6 +421,12 @@ int main(int argc, char *argv[])
 			break;
 		case 'D':
 			dir_only = 1;
+			break;
+		case 'v':
+			have_version = 1;
+			break;
+		case 'i':
+			del_interval = strtoul(optarg, NULL, 10);
 			break;
 		default:
 			USAGE(argv[0]);
@@ -446,7 +479,8 @@ int main(int argc, char *argv[])
 	if (del_pthread_num > 0) {
 		d_step = partition_num / del_pthread_num;
 	}
-	pbi = pbi_del_array;	
+	pbi = pbi_del_array;
+	sleep(del_interval);	
 	for (i = 0; i < del_pthread_num; i++) {
 		pbi->tsum = del_pthread_num;	
 		pbi->tindex = i;
@@ -455,6 +489,7 @@ int main(int argc, char *argv[])
 		pbi->partition_low = i * d_step;
 		pbi->partition_high = pbi->partition_low  + d_step;
 		pbi->file_count = file_num;
+		pbi->have_version = have_version;
 		if (pthread_create(&del_tid[i], NULL, do_del_files, pbi) != 0) {
 			perr_exit(errno, "pthread_create() error");
 		}

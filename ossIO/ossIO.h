@@ -27,6 +27,7 @@ struct partitions_buf_info {
 	long file_total_add;
 	long file_total_del;
 	long file_del_err_count;
+	int  have_version;
 };
 
 
@@ -37,9 +38,10 @@ struct partitions_buf_info {
 #define MAX_FILE_NUM				1024
 #define DEFAULT_FILE_SIZE_MAX		512
 #define DEFAULT_FILE_SIZE_MIN		8
-#define DEFAULT_FILE_SIZE_STEP		10
+#define DEFAULT_FILE_SIZE_STEP		20
 #define DEFAULT_ADD_PTHREAD_NUM		2
 #define DEFAULT_DEL_PTHREAD_NUM		0
-#define MAX_PTHREAD_NUM				1024
+#define MAX_PTHREAD_NUM				128
+#define DEFAULT_DEL_INTERVAL		60
 
 #endif
