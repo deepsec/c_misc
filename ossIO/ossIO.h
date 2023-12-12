@@ -25,17 +25,22 @@ struct partitions_buf_info {
 	long file_size_max;
 	long file_size_step;
 	long file_total_add;
+	long file_total_add_bytes;
 	long file_total_del;
+	long file_total_del_bytes;
 	int  have_version;
 	long tmp_dir_num;
 };
 
 struct statistic_info {
 	struct partitions_buf_info *pbi_add, *pbi_del;
-	int	   pbi_add_len, pbi_del_len;
-	long add_total_count;
-	long del_total_count;
-	long curent_total_count;
+	int	pbi_add_len, pbi_del_len;
+	long add_total;
+	long add_total_bytes;
+	long del_total;
+	long del_total_bytes;
+	char *dst_directory;
+	int print_bytes_info;
 };
 
 #define TMPFILE_DIR					"tmp"

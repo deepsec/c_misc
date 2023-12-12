@@ -257,6 +257,7 @@ void *do_create_many_files(void *arg)
 
 				create_one_file(&finfo);
 				pbip->file_total_add++;
+				pbip->file_total_add_bytes += finfo.file_size;
 			}
 		}
 	}
@@ -264,7 +265,7 @@ void *do_create_many_files(void *arg)
 }
 
 
-void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
+void random_remove_files(struct partitions_buf_info *pbip, const char *dir, long *file_total)
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -289,7 +290,7 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 			continue;
 		}
 		if (S_ISDIR(stbuf.st_mode)) {
-			random_remove_files(pbip, tmp);
+			random_remove_files(pbip, tmp, file_total);
 			/*
 			if (depth == 1) {
 				rmdir(tmp);
@@ -298,7 +299,8 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 			continue;
 		}	
 		if (S_ISREG(stbuf.st_mode)) {
-			if (random() % 3 == 0) {
+			(*file_total)++;
+			if (*file_total % 2 == 0) {
 				if (gettimeofday(&tv, NULL) < 0) {
 					err_sys("gettimeofday() error");
 				}	
@@ -316,14 +318,14 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir)
 					}
 				} else {
 					if (unlink(tmp) < 0) {
-						//err_ret("unlink(%s) error", tmp);
-						continue;
-					}
-					pbip->file_total_del++;
+						err_ret("unlink(%s) error", tmp);
+					}					
 				}
 				if (rename(ts_tmp, ts_dst_name) < 0) {
 					err_sys("rename(%s, %s) error", ts_tmp, ts_dst_name);
-				}				
+				}
+				pbip->file_total_del++;
+				pbip->file_total_del_bytes += stbuf.st_size;		
 			}
 		}
 	}
@@ -337,16 +339,15 @@ void *do_del_files(void *arg)
 	char dst_dir[PATH_MAX] = {0};
 	int dir_level_1_low, dir_level_1_high;
 	int i;
+	long file_total = 0;
 	
 	// detach, so needn't pthread_join
 	//pthread_detach(pthread_self());
-
 	dir_level_1_low = pbip->partition_low;
 	dir_level_1_high = pbip->partition_high;
-	
 	for (i = dir_level_1_low; i < dir_level_1_high; i++) {
 		snprintf(dst_dir, sizeof(dst_dir), "%s/%d", OBJECTS_DIR, i);
-		random_remove_files(pbip, dst_dir);
+		random_remove_files(pbip, dst_dir, &file_total);
 	}
 	return 0;
 }
@@ -398,48 +399,115 @@ void get_statistic_info(struct statistic_info *si)
 	struct partitions_buf_info *pbi_del = si->pbi_del;
 	int i;
 
-	si->add_total_count = 0;
-	si->del_total_count = 0;
-	si->curent_total_count = 0;
-
+	si->add_total = 0;
+	si->del_total = 0;
+	si->add_total_bytes = 0;
+	si->del_total_bytes = 0;
 	for (i = 0; i < si->pbi_add_len; i++) {
-		si->add_total_count += pbi_add[i].file_total_add;
+		si->add_total += pbi_add[i].file_total_add;
+		si->add_total_bytes += pbi_add[i].file_total_add_bytes;
 	}
 	for (i = 0; i < si->pbi_del_len; i++) {
-		si->del_total_count += pbi_del[i].file_total_del;
+		si->del_total += pbi_del[i].file_total_del;
+		si->del_total_bytes += pbi_del[i].file_total_del_bytes;		
 	}
-	si->curent_total_count = si->add_total_count - si->del_total_count;
 	return;
 }
 
 void *do_statistic(void *arg)
 {
 	struct statistic_info *si = (struct statistic_info *) arg;
-	long current_add_count = 0, last_add_count = 0;
-	long current_del_count = 0, last_del_count = 0;
-	struct timeval	tv_start = {0}, tv_now = {0};
+	long cur_add_total = 0, last_add_total = 0, add_inc = 0, add_inc_max = 0, add_inc_min = 0;
+	long cur_add_total_bytes = 0, last_add_total_bytes = 0, add_inc_bytes = 0, add_inc_bytes_max = 0, add_inc_bytes_min = 0;
+	long cur_del_total = 0, last_del_total = 0, del_dec = 0, del_dec_max = 0, del_dec_min = 0;
+	long cur_del_total_bytes = 0, last_del_total_bytes = 0, del_dec_bytes = 0, del_dec_bytes_max = 0, del_dec_bytes_min = 0;
 	long time_elapsed = 0;
-	if (gettimeofday(&tv_start, NULL) < 0) {
-		err_sys("gettimeofday() error");
-	}
-
+	int add_inc_mark = 0, add_inc_bytes_mark = 0, del_dec_mark = 0, del_dec_bytes_mark = 0;
+	
 	// detach, so needn't pthread_join
 	pthread_detach(pthread_self());
+	err_msg("\n**************************************           DIRETOTRY: %s            *****************************************\n", si->dst_directory);
 	for (;;) {
-		last_add_count = current_add_count;
-		last_del_count = current_del_count;
+		last_add_total = cur_add_total;
+		last_add_total_bytes = cur_add_total_bytes;
+		last_del_total = cur_del_total;
+		last_del_total_bytes = cur_del_total_bytes;	
 		sleep(1);
+		time_elapsed++;
 		get_statistic_info(si);
-		current_add_count = si->curent_total_count;
-		current_del_count = si->del_total_count;
-		if (gettimeofday(&tv_now, NULL) < 0) {
-			err_sys("gettimeofday() error");
+		cur_add_total = si->add_total;
+		cur_add_total_bytes = si->add_total_bytes;
+		cur_del_total = si->del_total;
+		cur_del_total_bytes = si->del_total_bytes;
+
+		add_inc = cur_add_total - last_add_total;
+		// get the first normal value
+		if (add_inc_mark == 0 && add_inc > 0) {
+			add_inc_max = add_inc_min = add_inc;
+			add_inc_mark = 1;
 		}
-		time_elapsed = tv_now.tv_sec - tv_start.tv_sec;
-		err_msg("curent_add_files: %ld, current_del_files: %ld, add_speed: %ld/s,  del_speed: %ld/s, time_elapsed: %lds, average_add: %ld/s", 
-				current_add_count, current_del_count, current_add_count - last_add_count, current_del_count - last_del_count, time_elapsed,	
-				(current_add_count) / time_elapsed);
-				
+		if (add_inc > add_inc_max && add_inc > 0) {
+			add_inc_max = add_inc;
+		} 
+		if (add_inc < add_inc_min && add_inc > 0) {
+			add_inc_min = add_inc;		
+		}
+		add_inc_bytes = cur_add_total_bytes - last_add_total_bytes;
+		// get the first normal value
+		if (add_inc_bytes_mark == 0 && add_inc_bytes > 0) {
+			add_inc_bytes_max = add_inc_bytes_min = add_inc_bytes;
+			add_inc_bytes_mark = 1;
+		}
+		if (add_inc_bytes > add_inc_bytes_max && add_inc_bytes > 0) {
+			add_inc_bytes_max = add_inc_bytes;
+		} 
+		if (add_inc_bytes_min < add_inc_min && add_inc_bytes > 0) {
+			add_inc_bytes_min = add_inc_bytes;		
+		}		
+		del_dec = cur_del_total - last_del_total;
+		// get the first normal value
+		if (del_dec_mark == 0 && del_dec > 0) {
+			del_dec_max = del_dec_min = del_dec;
+			del_dec_mark = 1;
+		}
+		if (del_dec > del_dec_max && del_dec > 0) {
+			del_dec_max = del_dec;
+		}
+		if (del_dec < del_dec_min && del_dec > 0) {
+			del_dec_min = del_dec;
+		}
+        del_dec_bytes = cur_del_total_bytes - last_del_total_bytes;
+		// get the first normal value
+		if (del_dec_bytes_mark == 0 && del_dec_bytes > 0) {
+			del_dec_bytes_max = del_dec_bytes_min = del_dec_bytes;
+			del_dec_bytes_mark = 1;
+		}
+		if (del_dec_bytes > del_dec_bytes_max && del_dec_bytes > 0) {
+			del_dec_bytes_max = del_dec_bytes;
+		}
+		if (del_dec_bytes < del_dec_bytes_min && del_dec_bytes > 0) {
+			del_dec_bytes_min = del_dec_bytes;
+		}
+		if (time_elapsed % 20 == 0) {
+			err_msg("\n**************************************           DIRETOTRY: %s            *****************************************\n", si->dst_directory);
+		}
+		if (si->pbi_add_len > 0) {
+			err_msg("ADD:    files:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, elapsed: %lds, average: %ld/s",
+				cur_add_total, add_inc, add_inc_max, add_inc_min, time_elapsed, cur_add_total/time_elapsed);
+			if (si->print_bytes_info) {
+				err_msg("        bytes:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, elapsed: %lds, average: %ld/s",
+					cur_add_total_bytes, add_inc_bytes, add_inc_bytes_max, add_inc_bytes_min, time_elapsed, cur_add_total_bytes/time_elapsed);
+			}
+		}
+		
+		if (si->pbi_del_len > 0) {
+			err_msg("DEL:    files:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", 
+					cur_del_total, del_dec, del_dec_max, del_dec_min, time_elapsed, cur_del_total/time_elapsed);
+			if (si->print_bytes_info) {
+				err_msg("        bytes:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", 
+					cur_del_total_bytes, del_dec_bytes, del_dec_bytes_max, del_dec_bytes_min, time_elapsed, cur_del_total_bytes/time_elapsed);		
+			}
+		}	
 	}
 	return 0;
 }
@@ -449,7 +517,7 @@ int main(int argc, char *argv[])
 	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step, del_interval;
 	long file_size_min, file_size_max, file_size_step, tmp_dir_num;
 	long i;	
-	int	opt, dir_only = 0, have_version = 0;
+	int	opt, dir_only = 0, have_version = 0, print_bytes_info = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0}, stat_tid;
 	struct partitions_buf_info  pbi_add_array[MAX_PTHREAD_NUM] = {{0},}, pbi_del_array[MAX_PTHREAD_NUM] = {{0},}, *pbi;
 	struct statistic_info si = {0};
@@ -464,7 +532,7 @@ int main(int argc, char *argv[])
 	file_size_step = DEFAULT_FILE_SIZE_STEP;
 	del_interval = DEFAULT_DEL_INTERVAL;
 	tmp_dir_num = DEFAULT_TMPDIR_NUM;
-	while ((opt = getopt(argc, argv, "n:p:s:a:d:Dvi:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
@@ -487,6 +555,9 @@ int main(int argc, char *argv[])
 		case 'v':
 			have_version = 1;
 			break;
+		case 'B':
+			print_bytes_info = 1;
+			break;
 		case 'i':
 			del_interval = strtoul(optarg, NULL, 10);
 			break;
@@ -508,15 +579,24 @@ int main(int argc, char *argv[])
 	if (add_pthread_num >  MAX_PTHREAD_NUM) {
 		add_pthread_num = MAX_PTHREAD_NUM;
 	}
+	if (add_pthread_num < 1) {
+		add_pthread_num = 1;
+	}
+	if (del_pthread_num >  MAX_PTHREAD_NUM) {
+		del_pthread_num = MAX_PTHREAD_NUM;
+	}
+	if (del_pthread_num < 0) {
+		del_pthread_num = 0;
+	}
 
 	if (partition_num < add_pthread_num) {
 		partition_num = add_pthread_num;
 	}
 	
-	printf("file_num: %ld, file_size[%ld:%ld:%ld] partition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld,"
-			"dir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld\n", 
-				file_num, file_size_min, file_size_max, file_size_step, partition_num, add_pthread_num, del_pthread_num,
-				dir_only, have_version, del_interval, tmp_dir_num);	
+	err_msg("\nCommand Lines Options:");
+	err_msg("\tfile_num: %ld, file_size[%ld:%ld:%ld]", file_num, file_size_min, file_size_max, file_size_step); 
+	err_msg("\tpartition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld", partition_num, add_pthread_num, del_pthread_num);
+	err_msg("\tdir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld\n", dir_only, have_version, del_interval, tmp_dir_num);	
 	//exit(0);
 	pbi = pbi_add_array;
 	databuf_4k = gen_4k_buffer();
@@ -551,6 +631,8 @@ int main(int argc, char *argv[])
 	si.pbi_add_len = add_pthread_num;
 	si.pbi_del = pbi_del_array;
 	si.pbi_del_len = del_pthread_num;
+	si.dst_directory = argv[optind];
+	si.print_bytes_info = print_bytes_info;
 	if (pthread_create(&stat_tid, NULL, do_statistic, &si) != 0) {
 		perr_exit(errno, "pthread_create() error");
 	}
@@ -573,18 +655,18 @@ int main(int argc, char *argv[])
 			perr_exit(errno, "pthread_create() error");
 		}
 	}
-	
-	
+
 	for (i = 0; i < add_pthread_num; i++) {		
 		pthread_join(add_tid[i], NULL);
 	}
 	for (i = 0; i < del_pthread_num; i++) {		
 		pthread_join(del_tid[i], NULL);
 	}
-
 	if(databuf_4k) {
 		free(databuf_4k);
 	}
+	sleep(3);
+	err_msg ("finished all work!");
 
 	return 0;
 }
