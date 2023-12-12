@@ -579,8 +579,8 @@ int main(int argc, char *argv[])
 	if (add_pthread_num >  MAX_PTHREAD_NUM) {
 		add_pthread_num = MAX_PTHREAD_NUM;
 	}
-	if (add_pthread_num < 1) {
-		add_pthread_num = 1;
+	if (add_pthread_num < 0) {
+		add_pthread_num = 0;
 	}
 	if (del_pthread_num >  MAX_PTHREAD_NUM) {
 		del_pthread_num = MAX_PTHREAD_NUM;
