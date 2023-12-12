@@ -307,9 +307,10 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir, long
 				snprintf(ts_name, sizeof(ts_name), "%ld.%ld.%ld.%ld.ts", pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
 				snprintf(ts_tmp, sizeof(ts_tmp), "%s/%s", TMPFILE_DIR, ts_name);
 				snprintf(ts_dst_name, sizeof(ts_dst_name), "%s/%s", dir, ts_name);
-				if ((ts_fd = creat(ts_tmp, 0600)) < 0) {
-					err_sys("creat(%s) error", ts_tmp);
+				if ((ts_fd = open(ts_tmp, O_RDWR | O_CREAT, 0600)) < 0) {
+					err_sys("open(%s) error", ts_tmp);
 				}
+				fsync(ts_fd);
 				close(ts_fd);
 				if (pbip->have_version) {
 					snprintf(version_file, sizeof(version_file), "%s/version.%s_%ld.%ld.%ld.%ld.data", dir, dp->d_name, pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
