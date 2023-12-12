@@ -579,20 +579,15 @@ int main(int argc, char *argv[])
 	if (add_pthread_num >  MAX_PTHREAD_NUM) {
 		add_pthread_num = MAX_PTHREAD_NUM;
 	}
-	if (add_pthread_num < 0) {
-		add_pthread_num = 0;
-	}
 	if (del_pthread_num >  MAX_PTHREAD_NUM) {
 		del_pthread_num = MAX_PTHREAD_NUM;
 	}
-	if (del_pthread_num < 0) {
-		del_pthread_num = 0;
+	if (partition_num < add_pthread_num || partition_num < del_pthread_num) {
+		err_quit("partition_num must be great than add&del pthread");
 	}
-
-	if (partition_num < add_pthread_num) {
-		partition_num = add_pthread_num;
-	}
-	
+	if (partition_num < 1) {
+		partition_num = 1;
+	}	
 	err_msg("\nCommand Lines Options:");
 	err_msg("\tfile_num: %ld, file_size[%ld:%ld:%ld]", file_num, file_size_min, file_size_max, file_size_step); 
 	err_msg("\tpartition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld", partition_num, add_pthread_num, del_pthread_num);
