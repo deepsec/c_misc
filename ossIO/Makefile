@@ -31,7 +31,7 @@ testso: test.o
 
 .PHONY: all clean
 clean:
-	@rm -f *.o lib*.so lib*.a $(EXEC) $(COMMON_OBJS)
+	@rm -f *.o lib*.so lib*.a $(EXEC) $(COMMON_OBJS) ../common/*.o
 
 
 ## file dependency

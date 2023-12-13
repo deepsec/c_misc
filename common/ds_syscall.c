@@ -31,13 +31,13 @@ void mkalldir(char *dir, mode_t mode)
 RETRY_MKDIR:
 		if (mkdir(all_dir, mode) < 0) {
 			if (errno == ENOSPC || errno == EBUSY || errno == EAGAIN || errno == EINTR) {
-					syscall_sleep(SYSCALL_SLEEP_MS);
-					if (retry_times++ < SYSCALL_INVOKE_TIMES) {
+					syscall_sleep(SYSCALL_SLEEP_MILLISECONDS);
+					if (retry_times++ < SYSCALL_CALL_MAX_RETRY_TIMES) {
 						goto RETRY_MKDIR;
 					}
 			}
 			if (errno != EEXIST) {	
-				err_msg("mkdir() syscall reach max retry: %d", SYSCALL_INVOKE_TIMES);				
+				err_msg("mkdir() syscall reached max retry: %d", SYSCALL_CALL_MAX_RETRY_TIMES);				
 				err_sys("mkdir(%s, %o) error", all_dir, mode);
 			}
 		}
@@ -53,12 +53,12 @@ int sleep_open(const char *pathname, int flags, mode_t mode)
 RETRY_OPEN:
 	if ((fd = open(pathname, flags, mode)) < 0) {
 		if (errno == ENOSPC || errno == EBUSY || errno == EAGAIN || errno == EINTR) {
-			syscall_sleep(SYSCALL_SLEEP_MS);
-			if (retry_times++ < SYSCALL_INVOKE_TIMES) {
+			syscall_sleep(SYSCALL_SLEEP_MILLISECONDS);
+			if (retry_times++ < SYSCALL_CALL_MAX_RETRY_TIMES) {
 				goto RETRY_OPEN;
 			}
 		}
-		err_msg("open() syscall reach max retry: %d", SYSCALL_INVOKE_TIMES);
+		err_msg("open() syscall reached max retry: %d", SYSCALL_CALL_MAX_RETRY_TIMES);
 		err_sys("open(%s, %o, %o) error", pathname, flags, mode);
 	}
 	return fd;
@@ -72,12 +72,12 @@ int sleep_rename(const char *oldpath, const char *newpath)
 RETRY_RENAME:
 	if ((ret = rename(oldpath, newpath)) < 0) {
 		if (errno == ENOSPC || errno == EBUSY || errno == EAGAIN || errno == EINTR) {
-			syscall_sleep(SYSCALL_SLEEP_MS);
-			if (retry_times++ < SYSCALL_INVOKE_TIMES) {
+			syscall_sleep(SYSCALL_SLEEP_MILLISECONDS);
+			if (retry_times++ < SYSCALL_CALL_MAX_RETRY_TIMES) {
 				goto RETRY_RENAME;
 			}
 		}
-		err_msg("rename() syscall reach max retry: %d", SYSCALL_INVOKE_TIMES);
+		err_msg("rename() syscall reached max retry: %d", SYSCALL_CALL_MAX_RETRY_TIMES);
 		err_sys("rename(%s, %s) error", oldpath, newpath);
 	}
 	return ret;
