@@ -53,29 +53,3 @@ ssize_t writen(int fd, const void *ptr, size_t n)
 	}
 	return (n - nleft);	/* return >= 0 */
 }
-
-void mkalldir(char *dir, mode_t mode)
-{
-	char *p;
-	char all_dir[PATH_MAX] = {0};
-	int i;
-
-	if (dir == NULL) return;
-
-	for (i = 0, p = dir; i <= strlen(dir); i++) {
-		if (i == 0 && *p == '/') {	/* skip root directory */
-			continue;
-		}
-		if (p[i] != '/' && p[i] != '\0') {
-			continue;
-		}
-		strncpy(all_dir, dir, i);
-		if (mkdir(all_dir, mode) < 0) {
-			if (errno != EEXIST) {
-				err_sys("mkdir(%s, %o) error", all_dir, mode);
-			}
-		}
-	}
-	return;
-}
-

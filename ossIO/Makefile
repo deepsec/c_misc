@@ -3,7 +3,7 @@ CFLAGS := -Wall -g -D__DS_DBG__ -D_FILE_OFFSET_BITS=64
 INCLUDE := -I. -I../common
 LIBS := -L/usr/local/lib -L/usr/lib -L. -L../common -pthread
 
-COMMON_SRCS := ../common/ds_err.c ../common/ds_common.c
+COMMON_SRCS := ../common/ds_err.c ../common/ds_common.c 
 COMMON_OBJS := $(subst .c,.o, $(COMMON_SRCS))
 
 EXEC := ossIO
@@ -13,7 +13,7 @@ all: $(EXEC)
 ds_mount: ds_mount.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-ossIO: ossIO.o $(COMMON_OBJS)
+ossIO: ossIO.o $(COMMON_OBJS) ../common/ds_syscall.o
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS) -lcrypto -lssl
 
 t: t.o $(COMMON_OBJS)
@@ -37,3 +37,4 @@ clean:
 ## file dependency
 ../common/ds_err.o: ../common/ds_err.c ../common/ds_err.h
 ../common/ds_common.o: ../common/ds_common.c ../common/ds_common.h
+../common/ds_syscall.o: ../common/ds_syscall.c ../common/ds_syscall.h

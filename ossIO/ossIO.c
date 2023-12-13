@@ -14,6 +14,7 @@
 #include <sys/xattr.h>
 #include "ds_err.h"
 #include "ds_common.h"
+#include "ds_syscall.h"
 #include "ossIO.h"
 
 
@@ -154,9 +155,7 @@ int create_one_file(struct file_info *finfo)
 	snprintf(tmp_file, sizeof(tmp_file), "%s/%s", fi->tmp_dir, fi->file_name);
 	snprintf(dst_file, sizeof(dst_file), "%s/%s", fi->dst_dir, fi->file_name);
 	
-	if ((fd = open(tmp_file, O_RDWR | O_CREAT, 0600)) < 0) {
-		err_sys("open(%s) error", tmp_file);
-	}
+	fd = sleep_open(tmp_file, O_RDWR | O_CREAT, 0600);
 	blocks = total_size / fi->buf_len;
 	left = total_size % fi->buf_len;
 	// whole blocks for write, every block is fi->buf_len
@@ -178,9 +177,7 @@ int create_one_file(struct file_info *finfo)
 
 	fsync(fd);
 	close(fd);
-	if (rename(tmp_file, dst_file) < 0) {
-		err_sys("rename(%s, %s) error", tmp_file, dst_file);
-	};
+	sleep_rename(tmp_file, dst_file);
 
 	return 0;
 }
@@ -314,17 +311,13 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir, long
 				close(ts_fd);
 				if (pbip->have_version) {
 					snprintf(version_file, sizeof(version_file), "%s/version.%s_%ld.%ld.%ld.%ld.data", dir, dp->d_name, pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
-					if (rename(tmp, version_file) < 0) {
-						err_sys("rename(%s, %s) error", tmp, version_file);
-					}
+					sleep_rename(tmp, version_file);
 				} else {
 					if (unlink(tmp) < 0) {
 						err_ret("unlink(%s) error", tmp);
 					}					
 				}
-				if (rename(ts_tmp, ts_dst_name) < 0) {
-					err_sys("rename(%s, %s) error", ts_tmp, ts_dst_name);
-				}
+				sleep_rename(ts_tmp, ts_dst_name);
 				pbip->file_total_del++;
 				pbip->file_total_del_bytes += stbuf.st_size;		
 			}
@@ -533,7 +526,7 @@ int main(int argc, char *argv[])
 	file_size_step = DEFAULT_FILE_SIZE_STEP;
 	del_interval = DEFAULT_DEL_INTERVAL;
 	tmp_dir_num = DEFAULT_TMPDIR_NUM;
-	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:w:")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
