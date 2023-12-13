@@ -39,7 +39,8 @@ struct statistic_info {
 	long add_total_bytes;
 	long del_total;
 	long del_total_bytes;
-	char *dst_directory;
+	char **cmdline;
+	int cmdline_len;
 	int print_bytes_info;
 };
 

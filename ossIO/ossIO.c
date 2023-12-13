@@ -408,6 +408,20 @@ void get_statistic_info(struct statistic_info *si)
 	return;
 }
 
+void print_cmdline(int argc, char **argv)
+{
+	int i;
+
+	printf("***********************************************************************************************************************\n");
+	printf("* Command: ");
+	for (i = 0; i < argc; i++) {
+		printf("%s ", argv[i]);
+	}
+	printf("\n");
+	printf("***********************************************************************************************************************\n");
+	return;	
+}
+
 void *do_statistic(void *arg)
 {
 	struct statistic_info *si = (struct statistic_info *) arg;
@@ -420,7 +434,7 @@ void *do_statistic(void *arg)
 	
 	// detach, so needn't pthread_join
 	pthread_detach(pthread_self());
-	err_msg("\n**************************************           DIRETOTRY: %s            *****************************************\n", si->dst_directory);
+	print_cmdline(si->cmdline_len, si->cmdline);
 	for (;;) {
 		last_add_total = cur_add_total;
 		last_add_total_bytes = cur_add_total_bytes;
@@ -483,7 +497,7 @@ void *do_statistic(void *arg)
 			del_dec_bytes_min = del_dec_bytes;
 		}
 		if (time_elapsed % 20 == 0) {
-			err_msg("\n**************************************           DIRETOTRY: %s            *****************************************\n", si->dst_directory);
+			print_cmdline(si->cmdline_len, si->cmdline);
 		}
 		if (si->pbi_add_len > 0) {
 			err_msg("ADD:    files:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, elapsed: %lds, average: %ld/s",
@@ -620,7 +634,8 @@ int main(int argc, char *argv[])
 	si.pbi_add_len = add_pthread_num;
 	si.pbi_del = pbi_del_array;
 	si.pbi_del_len = del_pthread_num;
-	si.dst_directory = argv[optind];
+	si.cmdline = argv;
+	si.cmdline_len = argc;
 	si.print_bytes_info = print_bytes_info;
 	if (pthread_create(&stat_tid, NULL, do_statistic, &si) != 0) {
 		perr_exit(errno, "pthread_create() error");
