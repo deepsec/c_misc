@@ -408,7 +408,7 @@ void get_statistic_info(struct statistic_info *si)
 
 void print_cmdline(int argc, char **argv)
 {
-	printf("*******************************************            DIRECTORY : %s           ********************************************\n", argv[argc-1]);
+	printf("\n*******************************************  DIRECTORY: %s  ********************************************\n\n", argv[argc-1]);
 	return;	
 }
 
@@ -636,7 +636,7 @@ int main(int argc, char *argv[])
 	}
 	pbi = pbi_del_array;
 	sleep(del_interval);	
-	for (i = 0; i < del_pthread_num; i++) {
+	for (i = 0; i < del_pthread_num; i++, pbi++) {
 		pbi->tsum = del_pthread_num;	
 		pbi->tindex = i;
 		pbi->buf = NULL;
