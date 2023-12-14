@@ -36,7 +36,8 @@ void show_status(int num)
 
 void USAGE(const char *cmd)
 {
-     err_msg("USAGE: %s [-D] [-v] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num] [-i del_interval] [-t tmp_dir_num] directory", cmd);
+     err_msg("USAGE: %s [-D] [-v] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num]"
+	 			" [-i del_interval] [-t tmp_dir_num] [-R del_radio] directory", cmd);
 	 err_msg("       -D                       only create partitions and suffix directorys, no files create");
 	 err_msg("       -v                       support version when delete object, [default: no support]");
 	 err_msg("       -n file_num              files in a partition = (partiton_number * 4096 * file_num), [default: %d]", DEFAULT_FILE_NUM);
@@ -46,6 +47,7 @@ void USAGE(const char *cmd)
 	 err_msg("       -d del_pthread_num       pthreads for delete file [default: %d]  ", DEFAULT_DEL_PTHREAD_NUM);
 	 err_msg("       -i interval              delete interval, [default: %d]", DEFAULT_DEL_INTERVAL);
 	 err_msg("       -t tmp_dir_num           tmp_dir_num, [default: %d]", DEFAULT_TMPDIR_NUM);
+	 err_msg("       -R del_ratio             delete_radio, [default: %d], 4 means will delete 25%% files", DEFAULT_DEL_FILE_RATIO);
 	 err_quit("       directory                target directory name");
 }
 
@@ -297,7 +299,7 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir, long
 		}	
 		if (S_ISREG(stbuf.st_mode)) {
 			(*file_total)++;
-			if (*file_total % 2 == 0) {
+			if (*file_total % pbip->del_radio == 0) {
 				if (gettimeofday(&tv, NULL) < 0) {
 					err_sys("gettimeofday() error");
 				}	
@@ -513,7 +515,7 @@ void *do_statistic(void *arg)
 int main(int argc, char *argv[])
 {
 	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step, del_interval;
-	long file_size_min, file_size_max, file_size_step, tmp_dir_num;
+	long file_size_min, file_size_max, file_size_step, tmp_dir_num, del_radio;
 	long i;	
 	int	opt, dir_only = 0, have_version = 0, print_bytes_info = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0}, stat_tid;
@@ -530,7 +532,8 @@ int main(int argc, char *argv[])
 	file_size_step = DEFAULT_FILE_SIZE_STEP;
 	del_interval = DEFAULT_DEL_INTERVAL;
 	tmp_dir_num = DEFAULT_TMPDIR_NUM;
-	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:w:")) != -1) {
+	del_radio = DEFAULT_DEL_FILE_RATIO;
+	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:w:R:")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
@@ -561,6 +564,9 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			tmp_dir_num = strtoul(optarg, NULL, 10);
+			break;
+		case 'R':
+			del_radio = strtoul(optarg, NULL, 10);
 			break;
 		default:
 			USAGE(argv[0]);
@@ -645,6 +651,7 @@ int main(int argc, char *argv[])
 		pbi->partition_high = pbi->partition_low  + d_step;
 		pbi->file_count = file_num;
 		pbi->have_version = have_version;
+		pbi->del_radio = del_radio;
 		if (pthread_create(&del_tid[i], NULL, do_del_files, pbi) != 0) {
 			perr_exit(errno, "pthread_create() error");
 		}

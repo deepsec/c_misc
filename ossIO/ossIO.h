@@ -30,6 +30,7 @@ struct partitions_buf_info {
 	long file_total_del_bytes;
 	int  have_version;
 	long tmp_dir_num;
+	long del_radio;
 };
 
 struct statistic_info {
@@ -57,5 +58,6 @@ struct statistic_info {
 #define MAX_PTHREAD_NUM				128
 #define DEFAULT_DEL_INTERVAL		60
 #define DEFAULT_TMPDIR_NUM			1
+#define DEFAULT_DEL_FILE_RATIO	4
 
 #endif
