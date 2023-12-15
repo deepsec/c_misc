@@ -47,7 +47,7 @@ void USAGE(const char *cmd)
 	 err_msg("       -d del_pthread_num       pthreads for delete file [default: %d]  ", DEFAULT_DEL_PTHREAD_NUM);
 	 err_msg("       -i interval              delete interval, [default: %d]", DEFAULT_DEL_INTERVAL);
 	 err_msg("       -t tmp_dir_num           tmp_dir_num, [default: %d]", DEFAULT_TMPDIR_NUM);
-	 err_msg("       -R del_ratio             delete_radio, [default: %d], 4 means will delete 25%% files", DEFAULT_DEL_FILE_RATIO);
+	 err_msg("       -R del_ratio             delete_radio, [default: %d], 5 means will delete 20%% files", DEFAULT_DEL_FILE_RATIO);
 	 err_quit("       directory                target directory name");
 }
 
@@ -421,7 +421,7 @@ void *do_statistic(void *arg)
 	long cur_add_total_bytes = 0, last_add_total_bytes = 0, add_inc_bytes = 0, add_inc_bytes_max = 0, add_inc_bytes_min = 0;
 	long cur_del_total = 0, last_del_total = 0, del_dec = 0, del_dec_max = 0, del_dec_min = 0;
 	long cur_del_total_bytes = 0, last_del_total_bytes = 0, del_dec_bytes = 0, del_dec_bytes_max = 0, del_dec_bytes_min = 0;
-	long time_elapsed = 0;
+	long time_elapsed = 0, del_elapsed = 0;
 	int add_inc_mark = 0, add_inc_bytes_mark = 0, del_dec_mark = 0, del_dec_bytes_mark = 0;
 	
 	// detach, so needn't pthread_join
@@ -501,11 +501,14 @@ void *do_statistic(void *arg)
 		}
 		
 		if (si->pbi_del_len > 0) {
+			del_elapsed = time_elapsed - si->del_interval;
+		}
+		if (del_elapsed > 0) {
 			err_msg("DEL:    files:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", 
-					cur_del_total, del_dec, del_dec_max, del_dec_min, time_elapsed, cur_del_total/time_elapsed);
+					cur_del_total, del_dec, del_dec_max, del_dec_min, time_elapsed, cur_del_total/del_elapsed);
 			if (si->print_bytes_info) {
 				err_msg("        bytes:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", 
-					cur_del_total_bytes, del_dec_bytes, del_dec_bytes_max, del_dec_bytes_min, time_elapsed, cur_del_total_bytes/time_elapsed);		
+					cur_del_total_bytes, del_dec_bytes, del_dec_bytes_max, del_dec_bytes_min, time_elapsed, cur_del_total_bytes/del_elapsed);		
 			}
 		}	
 	}
@@ -595,7 +598,8 @@ int main(int argc, char *argv[])
 	err_msg("\nCommand Lines Options:");
 	err_msg("\tfile_num: %ld, file_size[%ld:%ld:%ld]", file_num, file_size_min, file_size_max, file_size_step); 
 	err_msg("\tpartition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld", partition_num, add_pthread_num, del_pthread_num);
-	err_msg("\tdir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld\n", dir_only, have_version, del_interval, tmp_dir_num);	
+	err_msg("\tdir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld", dir_only, have_version, del_interval, tmp_dir_num);
+	err_msg("\tdel_radio: %ld\n", del_radio);		
 	//exit(0);
 	pbi = pbi_add_array;
 	databuf_4k = gen_4k_buffer();
@@ -630,6 +634,7 @@ int main(int argc, char *argv[])
 	si.pbi_add_len = add_pthread_num;
 	si.pbi_del = pbi_del_array;
 	si.pbi_del_len = del_pthread_num;
+	si.del_interval = del_interval;
 	si.cmdline = argv;
 	si.cmdline_len = argc;
 	si.print_bytes_info = print_bytes_info;

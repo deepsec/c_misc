@@ -4,7 +4,7 @@
 //#define _POSIX_C_SOURCE 199309L
 #include <time.h>
 
-#define SYSCALL_SLEEP_MILLISECONDS      10
+#define SYSCALL_SLEEP_MILLISECONDS      50
 #define SYSCALL_CALL_MAX_RETRY_TIMES    10
 
 void mkalldir(char *dir, mode_t mode);

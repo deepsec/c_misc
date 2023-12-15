@@ -40,6 +40,7 @@ struct statistic_info {
 	long add_total_bytes;
 	long del_total;
 	long del_total_bytes;
+	long del_interval;
 	char **cmdline;
 	int cmdline_len;
 	int print_bytes_info;
@@ -56,8 +57,8 @@ struct statistic_info {
 #define DEFAULT_ADD_PTHREAD_NUM		2
 #define DEFAULT_DEL_PTHREAD_NUM		0
 #define MAX_PTHREAD_NUM				128
-#define DEFAULT_DEL_INTERVAL		60
+#define DEFAULT_DEL_INTERVAL		600
 #define DEFAULT_TMPDIR_NUM			1
-#define DEFAULT_DEL_FILE_RATIO	4
+#define DEFAULT_DEL_FILE_RATIO		5
 
 #endif
