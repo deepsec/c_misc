@@ -5,41 +5,26 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-//#include "ds_common.h"
+#include <stdio.h>
+#include "ds_syscall.h"
+#include "ds_common.h"
 #include "ds_err.h"
-
-
-void mkalldir(char *dir, mode_t mode)
-{
-	char *p;
-	char all_dir[PATH_MAX] = {0};
-	int i;
-
-	if (dir == NULL || *dir == '/') return;
-
-	for (i = 0, p = dir; i <= strlen(dir); i++) {
-		if (p[i] != '/' && p[i] != '\0') {
-			continue;
-		}
-		strncpy(all_dir, dir, i);
-		if (mkdir(all_dir, mode) < 0) {
-			if (errno != EEXIST) {
-				err_sys("mkdir(%s, %o) error", all_dir, mode);
-			}
-		}
-	}
-	return;
-}
 
 
 int main(int argc, char *argv[])
 {
+	long  ino_free, ino_total, blk_free, blk_total, blk_size;
 	if (argc != 2) {
-		err_quit("USAGE: %s dir", argv[0]);
+		err_quit("USAGE: %s pathname", argv[0]);
 	}
 
-	mkalldir(argv[1], 0755);
+	if (fs_info(argv[1], &ino_free, &ino_total, &blk_free, &blk_total, &blk_size) < 0) {
+		err_sys("fs_info() error");
+	}
+	printf("ino_free: %ld,  ino_total: %ld,  blk_free: %ld, blk_total: %ld, blk_size: %ld\n", 
+			ino_free, ino_total, blk_free, blk_total, blk_size);
+
+	printf("%2.2f\n", ((double)(blk_free)/(double)(blk_total)));
 
 	return 0;
-
 }

@@ -53,3 +53,30 @@ ssize_t writen(int fd, const void *ptr, size_t n)
 	}
 	return (n - nleft);	/* return >= 0 */
 }
+
+/* translate  '123456' to '123,456' for easy read */
+char *V(char *d, char *r)
+{
+	int	i, len, left, blocks;
+	char *pd = d, *pr = r;
+
+	if (d == NULL || r == NULL)	return NULL;
+	len = strlen(d);
+	blocks = len / 3;
+	left = len % 3;
+	if (left > 0) {
+		strncpy(pr, pd, left);
+		pr += left;
+		pd += left;
+		*pr++ = ',';
+	}
+	for (i = 0; i < blocks; i++) {
+		strncpy(pr, pd, 3);
+		pr += 3;
+		pd += 3;
+		*pr++ = ',';
+	}
+	/* replace the last ',' to '\0' */
+	*(pr-1) = '\0';
+	return r;
+}

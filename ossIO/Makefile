@@ -16,7 +16,7 @@ ds_mount: ds_mount.o $(COMMON_OBJS)
 ossIO: ossIO.o $(COMMON_OBJS) ../common/ds_syscall.o
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS) -lcrypto -lssl
 
-t: t.o $(COMMON_OBJS)
+t: t.o $(COMMON_OBJS) ../common/ds_syscall.o
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 testso: test.o

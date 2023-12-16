@@ -25,6 +25,15 @@ ut: ut.o $(COMMON_OBJS)
 eatMem: eatMem.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
+mf: mf.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+rf: rf.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+mf2: mf2.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
 testso: test.o
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LIBS) -ldeepcommon
 

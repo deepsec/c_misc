@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/statvfs.h>
 #include "ds_common.h"
 #include "ds_err.h"
 #include "ds_syscall.h"
@@ -96,4 +97,24 @@ int syscall_sleep(long ms)
 		err_sys("nanosleep error");
 	}
 	return ret;
+}
+
+
+int fs_info(const char *fs, long *ino_free, long *ino_total, long *blk_free, long *blk_total, long *blk_size)
+{
+	struct statvfs sv;
+
+	if (fs == NULL) return -1;
+    if (statvfs(fs, &sv) < 0) {
+        //err_ret("statvfs [%s] error", fs);
+		return -1;
+    }
+
+	if (ino_free)	*ino_free = sv.f_ffree;
+	if (ino_total)	*ino_total = sv.f_files;
+	if (blk_free)	*blk_free = sv.f_bfree;
+	if (blk_total)	*blk_total = sv.f_blocks;
+	if (blk_size)	*blk_size = sv.f_bsize;
+
+    return 0;
 }

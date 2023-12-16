@@ -410,7 +410,18 @@ void get_statistic_info(struct statistic_info *si)
 
 void print_cmdline(int argc, char **argv)
 {
-	printf("\n*******************************************  DIRECTORY: %s  ********************************************\n\n", argv[argc-1]);
+	long  ino_free, ino_total, blk_free, blk_total, blk_size;
+	char iv[128] = {0}, ivb[128] = {0}, bv[128] = {0}, bvb[128] = {0};
+	
+	// because before enter this pthread, the workdir have already chdir("argv[argc-1]"), so use "."
+	if (fs_info(".", &ino_free, &ino_total, &blk_free, &blk_total, &blk_size) < 0) {
+		err_sys("fs_info('%s') error", argv[argc-1]);
+	}
+	snprintf(iv, sizeof(iv), "%ld", ino_total - ino_free);
+	snprintf(bv, sizeof(bv), "%ld", (blk_total - blk_free) * blk_size);
+	printf("\n*********************     DIRECTORY: %s   [i_used: %.2f%% (%s),  b_used: %.2f%% (%s bytes)]     *******************\n\n", 
+			argv[argc-1], (double)(ino_total-ino_free)/(double)(ino_total), V(iv, ivb),	(double)(blk_total-blk_free)/(double)(blk_total), V(bv, bvb));
+
 	return;	
 }
 
