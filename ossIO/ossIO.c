@@ -412,6 +412,14 @@ void print_cmdline(int argc, char **argv)
 {
 	long  ino_free, ino_total, blk_free, blk_total, blk_size;
 	char iv[128] = {0}, ivb[128] = {0}, bv[128] = {0}, bvb[128] = {0};
+	struct timeval tv = {0};
+	char *datetime = NULL;
+
+	if (gettimeofday(&tv, NULL) < 0) {
+		err_sys("gettimeofday() error");
+	}	
+	datetime = ctime(&tv.tv_sec);
+	datetime[strlen(datetime) - 1] = '\0';
 	
 	// because before enter this pthread, the workdir have already chdir("argv[argc-1]"), so use "."
 	if (fs_info(".", &ino_free, &ino_total, &blk_free, &blk_total, &blk_size) < 0) {
@@ -419,8 +427,8 @@ void print_cmdline(int argc, char **argv)
 	}
 	snprintf(iv, sizeof(iv), "%ld", ino_total - ino_free);
 	snprintf(bv, sizeof(bv), "%ld", (blk_total - blk_free) * blk_size);
-	printf("\n*********************     DIRECTORY: %s   [i_used: %.2f%% (%s),  b_used: %.2f%% (%s bytes)]     *******************\n\n", 
-			argv[argc-1], (double)(ino_total-ino_free)/(double)(ino_total), V(iv, ivb),	(double)(blk_total-blk_free)/(double)(blk_total), V(bv, bvb));
+	printf("\n**********   DIRECTORY: %s   [i_used: %.2f%% (%s)   b_used: %.2f%% (%s bytes)]   %s   **********\n\n", 
+			argv[argc-1], (double)(ino_total-ino_free)/(double)(ino_total), V(iv, ivb),	(double)(blk_total-blk_free)/(double)(blk_total), V(bv, bvb), datetime);
 
 	return;	
 }
