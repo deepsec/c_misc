@@ -428,7 +428,7 @@ void print_cmdline(int argc, char **argv)
 	snprintf(iv, sizeof(iv), "%ld", ino_total - ino_free);
 	snprintf(bv, sizeof(bv), "%ld", (blk_total - blk_free) * blk_size);
 	printf("\n**********   DIRECTORY: %s   [i_used: %.2f%% (%s)   b_used: %.2f%% (%s bytes)]   %s   **********\n\n", 
-			argv[argc-1], (double)(ino_total-ino_free)/(double)(ino_total), V(iv, ivb),	(double)(blk_total-blk_free)/(double)(blk_total), V(bv, bvb), datetime);
+			argv[argc-1], (double)(100*(ino_total-ino_free))/(double)(ino_total), V(iv, ivb),	(double)(100*(blk_total-blk_free))/(double)(blk_total), V(bv, bvb), datetime);
 
 	return;	
 }
