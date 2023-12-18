@@ -37,7 +37,7 @@ void show_status(int num)
 void USAGE(const char *cmd)
 {
      err_msg("USAGE: %s [-D] [-v] [-n file_num] [-p partition_num] -s [1:10:1 (file_size)]  [-a add_pthread_num] [-d del_pthread_num]"
-	 			" [-i del_interval] [-t tmp_dir_num] [-R del_radio] directory", cmd);
+	 			" [-i del_interval] [-t tmp_dir_num] [-R del_radio] [-r] directory", cmd);
 	 err_msg("       -D                       only create partitions and suffix directorys, no files create");
 	 err_msg("       -v                       support version when delete object, [default: no support]");
 	 err_msg("       -n file_num              files in a partition = (partiton_number * 4096 * file_num), [default: %d]", DEFAULT_FILE_NUM);
