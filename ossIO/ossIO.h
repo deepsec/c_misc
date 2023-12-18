@@ -31,6 +31,7 @@ struct partitions_buf_info {
 	int  have_version;
 	long tmp_dir_num;
 	long del_radio;
+	int pure_remove;
 };
 
 struct statistic_info {

@@ -48,6 +48,7 @@ void USAGE(const char *cmd)
 	 err_msg("       -i interval              delete interval, [default: %d]", DEFAULT_DEL_INTERVAL);
 	 err_msg("       -t tmp_dir_num           tmp_dir_num, [default: %d]", DEFAULT_TMPDIR_NUM);
 	 err_msg("       -R del_ratio             delete_radio, [default: %d], 5 means will delete 20%% files", DEFAULT_DEL_FILE_RATIO);
+	 err_msg("       -r                       only remove files, no create .ts, default: 0, create .ts");	 
 	 err_quit("       directory                target directory name");
 }
 
@@ -300,24 +301,30 @@ void random_remove_files(struct partitions_buf_info *pbip, const char *dir, long
 		if (S_ISREG(stbuf.st_mode)) {
 			(*file_total)++;
 			if (*file_total % pbip->del_radio == 0) {
-				if (gettimeofday(&tv, NULL) < 0) {
-					err_sys("gettimeofday() error");
-				}	
-				snprintf(ts_name, sizeof(ts_name), "%ld.%ld.%ld.%ld.ts", pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
-				snprintf(ts_tmp, sizeof(ts_tmp), "%s/%s", TMPFILE_DIR, ts_name);
-				snprintf(ts_dst_name, sizeof(ts_dst_name), "%s/%s", dir, ts_name);
-				ts_fd = sleep_open(ts_tmp, O_RDWR | O_CREAT, 0600);
-				fsync(ts_fd);
-				close(ts_fd);
-				if (pbip->have_version) {
-					snprintf(version_file, sizeof(version_file), "%s/version.%s_%ld.%ld.%ld.%ld.data", dir, dp->d_name, pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
-					sleep_rename(tmp, version_file);
-				} else {
+				if (pbip->pure_remove) {
 					if (unlink(tmp) < 0) {
 						err_ret("unlink(%s) error", tmp);
-					}					
-				}
-				sleep_rename(ts_tmp, ts_dst_name);
+					}
+				} else {
+					if (gettimeofday(&tv, NULL) < 0) {
+						err_sys("gettimeofday() error");
+					}	
+					snprintf(ts_name, sizeof(ts_name), "%ld.%ld.%ld.%ld.ts", pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
+					snprintf(ts_tmp, sizeof(ts_tmp), "%s/%s", TMPFILE_DIR, ts_name);
+					snprintf(ts_dst_name, sizeof(ts_dst_name), "%s/%s", dir, ts_name);
+					ts_fd = sleep_open(ts_tmp, O_RDWR | O_CREAT, 0600);
+					fsync(ts_fd);
+					close(ts_fd);
+					if (pbip->have_version) {
+						snprintf(version_file, sizeof(version_file), "%s/version.%s_%ld.%ld.%ld.%ld.data", dir, dp->d_name, pbip->tindex, random(), tv.tv_sec, tv.tv_usec);
+						sleep_rename(tmp, version_file);
+					} else {
+						if (unlink(tmp) < 0) {
+							err_ret("unlink(%s) error", tmp);
+						}					
+					}
+					sleep_rename(ts_tmp, ts_dst_name);
+				}				
 				pbip->file_total_del++;
 				pbip->file_total_del_bytes += stbuf.st_size;		
 			}
@@ -551,7 +558,7 @@ int main(int argc, char *argv[])
 	long partition_num, file_num, add_pthread_num, del_pthread_num, a_step, d_step, del_interval;
 	long file_size_min, file_size_max, file_size_step, tmp_dir_num, del_radio;
 	long i;	
-	int	opt, dir_only = 0, have_version = 0, print_bytes_info = 0;
+	int	opt, dir_only = 0, have_version = 0, print_bytes_info = 0, pure_remove = 0;
 	pthread_t	add_tid[MAX_PTHREAD_NUM] = {0}, del_tid[MAX_PTHREAD_NUM] = {0}, stat_tid;
 	struct partitions_buf_info  pbi_add_array[MAX_PTHREAD_NUM] = {{0},}, pbi_del_array[MAX_PTHREAD_NUM] = {{0},}, *pbi;
 	struct statistic_info si = {0};
@@ -568,7 +575,7 @@ int main(int argc, char *argv[])
 	del_interval = DEFAULT_DEL_INTERVAL;
 	tmp_dir_num = DEFAULT_TMPDIR_NUM;
 	del_radio = DEFAULT_DEL_FILE_RATIO;
-	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:w:R:")) != -1) {
+	while ((opt = getopt(argc, argv, "Bn:p:s:a:d:Dvi:t:R:r")) != -1) {
 		switch (opt) {
 		case 'n':
 			file_num = strtoul(optarg, NULL, 10);
@@ -603,6 +610,9 @@ int main(int argc, char *argv[])
 		case 'R':
 			del_radio = strtoul(optarg, NULL, 10);
 			break;
+		case 'r':
+			pure_remove = 1;
+			break;
 		default:
 			USAGE(argv[0]);
 		}
@@ -631,7 +641,7 @@ int main(int argc, char *argv[])
 	err_msg("\tfile_num: %ld, file_size[%ld:%ld:%ld]", file_num, file_size_min, file_size_max, file_size_step); 
 	err_msg("\tpartition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld", partition_num, add_pthread_num, del_pthread_num);
 	err_msg("\tdir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld", dir_only, have_version, del_interval, tmp_dir_num);
-	err_msg("\tdel_radio: %ld\n", del_radio);		
+	err_msg("\tdel_radio: %ld, pure_remove: %d\n", del_radio, pure_remove);		
 	//exit(0);
 	pbi = pbi_add_array;
 	databuf_4k = gen_4k_buffer();
@@ -689,6 +699,7 @@ int main(int argc, char *argv[])
 		pbi->file_count = file_num;
 		pbi->have_version = have_version;
 		pbi->del_radio = del_radio;
+		pbi->pure_remove = pure_remove;
 		if (pthread_create(&del_tid[i], NULL, do_del_files, pbi) != 0) {
 			perr_exit(errno, "pthread_create() error");
 		}
