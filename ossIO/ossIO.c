@@ -542,7 +542,7 @@ void *do_statistic(void *arg)
 			del_elapsed = time_elapsed - si->del_interval;
 		}
 		if (del_elapsed > 0) {
-			err_msg("DEL:    files:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", 
+			err_msg("%s:    files:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", (si->pbi_del->pure_remove == 1) ? "PUREDEL" : "DEL",
 					cur_del_total, del_dec, del_dec_max, del_dec_min, time_elapsed, cur_del_total/del_elapsed);
 			if (si->print_bytes_info) {
 				err_msg("        bytes:    total: %ld, speed: %ld/s, max: %ld/s, min: %ld/s, time_elapsed: %lds, average: %ld/s", 
