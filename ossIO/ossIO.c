@@ -408,6 +408,18 @@ void get_statistic_info(struct statistic_info *si)
 	return;
 }
 
+void print_original_cmdline(int argc, char **argv)
+{
+	int i;
+
+	printf("\n**********   ORIGINAL COMMAND LINE:   ");
+	for (i = 0; i < argc; i++) {
+		printf("%s ", argv[i]);
+	}
+	printf("   **********\n");
+	return;
+}
+
 void print_cmdline(int argc, char **argv)
 {
 	long  ino_free, ino_total, blk_free, blk_total, blk_size;
@@ -545,6 +557,7 @@ int main(int argc, char *argv[])
 	struct statistic_info si = {0};
 	char *databuf_4k = NULL;
 	
+	print_original_cmdline(argc, argv);
 	file_num = DEFAULT_FILE_NUM;
 	partition_num = DEFAULT_PARTITION_NUM;
 	add_pthread_num = DEFAULT_ADD_PTHREAD_NUM;
@@ -614,7 +627,7 @@ int main(int argc, char *argv[])
 	if (partition_num < 1) {
 		partition_num = 1;
 	}	
-	err_msg("\nCommand Lines Options:");
+	err_msg("Command Lines Options:");
 	err_msg("\tfile_num: %ld, file_size[%ld:%ld:%ld]", file_num, file_size_min, file_size_max, file_size_step); 
 	err_msg("\tpartition_num: %ld, add_pthread_num: %ld, del_pthread_num: %ld", partition_num, add_pthread_num, del_pthread_num);
 	err_msg("\tdir_only: %d, version: %d, del_interval:%ld, tmp_dir_num: %ld", dir_only, have_version, del_interval, tmp_dir_num);
@@ -691,7 +704,8 @@ int main(int argc, char *argv[])
 		free(databuf_4k);
 	}
 	sleep(3);
+	print_original_cmdline(argc, argv);
 	err_msg ("finished all work!");
-
+	
 	return 0;
 }
