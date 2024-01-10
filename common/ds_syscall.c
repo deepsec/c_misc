@@ -34,6 +34,7 @@ RETRY_MKDIR:
 			if (errno == ENOSPC || errno == EBUSY || errno == EAGAIN || errno == EINTR) {
 					syscall_sleep(SYSCALL_SLEEP_MILLISECONDS);
 					if (retry_times++ < SYSCALL_CALL_MAX_RETRY_TIMES) {
+						err_msg("mkdir() syscall retry: %d", retry_times);
 						goto RETRY_MKDIR;
 					}
 			}
@@ -56,6 +57,7 @@ RETRY_OPEN:
 		if (errno == ENOSPC || errno == EBUSY || errno == EAGAIN || errno == EINTR) {
 			syscall_sleep(SYSCALL_SLEEP_MILLISECONDS);
 			if (retry_times++ < SYSCALL_CALL_MAX_RETRY_TIMES) {
+				err_msg("open() syscall retry: %d", retry_times);
 				goto RETRY_OPEN;
 			}
 		}
@@ -75,6 +77,7 @@ RETRY_RENAME:
 		if (errno == ENOSPC || errno == EBUSY || errno == EAGAIN || errno == EINTR) {
 			syscall_sleep(SYSCALL_SLEEP_MILLISECONDS);
 			if (retry_times++ < SYSCALL_CALL_MAX_RETRY_TIMES) {
+				err_msg("rename() syscall retry: %d", retry_times);
 				goto RETRY_RENAME;
 			}
 		}
